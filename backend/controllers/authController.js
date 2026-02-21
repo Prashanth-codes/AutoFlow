@@ -1,46 +1,75 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Organization = require('../models/Organization');
 const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { name, email, password, organizationName } = req.body;
 
     // Check if user exists
     let user = await User.findOne({ email });
     if (user) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         success: false,
         message: 'User already exists',
       });
     }
 
-    // Create organization
-    const organization = await Organization.create({
-      name: organizationName || name,
-      email,
-      owner: null, // Will be updated after user creation
-    });
+    // Create organization (within transaction)
+    const [organization] = await Organization.create(
+      [
+        {
+          name: organizationName || name,
+          email,
+          owner: null,
+        },
+      ],
+      { session }
+    );
 
-    // Create user
-    user = await User.create({
-      name,
-      email,
-      password,
-      organizationId: organization._id,
-      role: 'admin',
-    });
+    // Create user (within transaction)
+    [user] = await User.create(
+      [
+        {
+          name,
+          email,
+          password,
+          organizationId: organization._id,
+          role: 'admin',
+        },
+      ],
+      { session }
+    );
 
     // Update organization owner
     organization.owner = user._id;
     organization.members.push(user._id);
-    await organization.save();
+    await organization.save({ session });
 
+    await session.commitTransaction();
+    session.endSession();
 
+    // Generate token so user is logged in immediately after registration
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        organizationId: organization._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -53,6 +82,8 @@ exports.register = async (req, res) => {
       },
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error('Registration error:', error);
     res.status(500).json({
       success: false,

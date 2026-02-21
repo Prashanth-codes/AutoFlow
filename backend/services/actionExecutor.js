@@ -203,9 +203,9 @@ class ActionExecutor {
       throw new Error('Missing required config: platform, content, scheduledFor');
     }
 
-    // Schedule using cron
+    // Schedule using setTimeout (pass full workflow for organizationId access)
     const result = await scheduler.schedulePost(
-      workflow._id,
+      workflow,
       platform,
       content,
       new Date(scheduledFor),

@@ -6,10 +6,14 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const scheduler = require('./services/scheduler');
 
 const app = express();
 
-connectDB();
+// Connect to DB, then recover any pending scheduled posts
+connectDB().then(() => {
+  scheduler.recoverScheduledPosts();
+});
 
 app.use(cors());
 app.use(express.json());

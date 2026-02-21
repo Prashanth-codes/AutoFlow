@@ -24,6 +24,14 @@ exports.createWorkflow = async (req, res) => {
       });
     }
 
+    // Validate actions
+    if (!actions || !Array.isArray(actions) || actions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least one action',
+      });
+    }
+
     // Generate webhook ID
     const webhookId = generateWebhookId();
 
@@ -124,17 +132,21 @@ exports.updateWorkflow = async (req, res) => {
     const { organizationId } = req.user;
     const { name, description, actions, isActive } = req.body;
 
+    // Build update object with only provided fields to avoid wiping unset ones
+    const updateFields = {};
+    if (name !== undefined) updateFields.name = name;
+    if (description !== undefined) updateFields.description = description;
+    if (isActive !== undefined) updateFields.isActive = isActive;
+    if (actions !== undefined) {
+      updateFields.actions = actions.map((action, index) => ({
+        ...action,
+        order: index,
+      }));
+    }
+
     const workflow = await Workflow.findOneAndUpdate(
       { _id: id, organizationId },
-      {
-        name,
-        description,
-        actions: actions?.map((action, index) => ({
-          ...action,
-          order: index,
-        })),
-        isActive,
-      },
+      updateFields,
       { new: true }
     );
 
