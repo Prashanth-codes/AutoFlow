@@ -37,6 +37,21 @@ const workflowSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    triggerConfig: {
+      formFields: [
+        {
+          fieldName: { type: String, required: true },
+          fieldLabel: { type: String },
+          fieldType: {
+            type: String,
+            enum: ['text', 'email', 'number', 'date', 'textarea', 'select', 'checkbox'],
+            default: 'text',
+          },
+          required: { type: Boolean, default: false },
+          options: [String], // for select type
+        },
+      ],
+    },
     actions: [
       {
         actionType: {
@@ -52,6 +67,10 @@ const workflowSchema = new mongoose.Schema(
           required: true,
         },
         config: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
+        fieldMappings: {
           type: mongoose.Schema.Types.Mixed,
           default: {},
         },

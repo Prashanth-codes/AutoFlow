@@ -5,7 +5,7 @@ const generateWebhookId = require('../utils/generateWebhookId');
 // Create Workflow
 exports.createWorkflow = async (req, res) => {
   try {
-    const { name, description, triggerType, actions } = req.body;
+    const { name, description, triggerType, triggerConfig, actions } = req.body;
     const { organizationId } = req.user;
     const { userId } = req.user;
 
@@ -43,8 +43,10 @@ exports.createWorkflow = async (req, res) => {
       createdBy: userId,
       triggerType,
       webhookId,
+      triggerConfig: triggerType === 'GOOGLE_FORM' && triggerConfig ? triggerConfig : undefined,
       actions: actions.map((action, index) => ({
         ...action,
+        fieldMappings: action.fieldMappings || {},
         order: index,
       })),
     });
@@ -130,16 +132,18 @@ exports.updateWorkflow = async (req, res) => {
   try {
     const { id } = req.params;
     const { organizationId } = req.user;
-    const { name, description, actions, isActive } = req.body;
+    const { name, description, actions, isActive, triggerConfig } = req.body;
 
     // Build update object with only provided fields to avoid wiping unset ones
     const updateFields = {};
     if (name !== undefined) updateFields.name = name;
     if (description !== undefined) updateFields.description = description;
     if (isActive !== undefined) updateFields.isActive = isActive;
+    if (triggerConfig !== undefined) updateFields.triggerConfig = triggerConfig;
     if (actions !== undefined) {
       updateFields.actions = actions.map((action, index) => ({
         ...action,
+        fieldMappings: action.fieldMappings || {},
         order: index,
       }));
     }

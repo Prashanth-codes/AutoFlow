@@ -21,6 +21,7 @@ import {
   CalendarClock,
   Video,
   Webhook,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -161,6 +162,13 @@ export default function WorkflowDetail() {
                 <span className="info-label">Trigger Type</span>
                 <span className="info-value">{workflow.triggerType?.replace(/_/g, ' ')}</span>
               </div>
+              {workflow.triggerType === 'GOOGLE_FORM' &&
+                workflow.triggerConfig?.formFields?.length > 0 && (
+                  <div className="info-row">
+                    <span className="info-label">Form Fields</span>
+                    <span className="info-value">{workflow.triggerConfig.formFields.length} fields defined</span>
+                  </div>
+                )}
               <div className="info-row">
                 <span className="info-label">Actions</span>
                 <span className="info-value">{workflow.actions?.length || 0} step{(workflow.actions?.length || 0) !== 1 && 's'}</span>
@@ -214,6 +222,48 @@ export default function WorkflowDetail() {
           </div>
         </div>
       </div>
+
+      {/* Form Fields Detail (Google Form only) */}
+      {workflow.triggerType === 'GOOGLE_FORM' &&
+        workflow.triggerConfig?.formFields?.length > 0 && (
+          <div className="card" style={{ marginTop: '1.5rem' }}>
+            <div className="card-header">
+              <h3 className="card-title">
+                <FileText size={18} style={{ marginRight: 6 }} /> Form Fields
+              </h3>
+              <span className="card-header-hint">
+                {workflow.triggerConfig.formFields.length} field
+                {workflow.triggerConfig.formFields.length !== 1 && 's'}
+              </span>
+            </div>
+            <div className="card-body">
+              <div className="table-wrapper">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Field Name</th>
+                      <th>Label</th>
+                      <th>Type</th>
+                      <th>Required</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workflow.triggerConfig.formFields.map((f, idx) => (
+                      <tr key={idx}>
+                        <td>{idx + 1}</td>
+                        <td><code>{f.fieldName}</code></td>
+                        <td>{f.fieldLabel || '—'}</td>
+                        <td>{f.fieldType}</td>
+                        <td>{f.required ? '✓ Yes' : 'No'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Execution Logs */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
@@ -275,8 +325,51 @@ export default function WorkflowDetail() {
           <h4>Example cURL:</h4>
           <pre>{`curl -X POST ${webhookUrl} \\
   -H "Content-Type: application/json" \\
-  -d '{"name": "John", "email": "john@example.com"}'`}</pre>
+  -d '${
+    workflow.triggerConfig?.formFields?.length > 0
+      ? JSON.stringify(
+          workflow.triggerConfig.formFields.reduce((acc, f) => {
+            acc[f.fieldName] =
+              f.fieldType === 'email'
+                ? 'john@example.com'
+                : f.fieldType === 'number'
+                ? 123
+                : f.fieldType === 'checkbox'
+                ? true
+                : `sample ${f.fieldLabel || f.fieldName}`;
+            return acc;
+          }, {}),
+          null,
+          2
+        )
+      : '{"name": "John", "email": "john@example.com"}'
+  }'`}</pre>
         </div>
+        {workflow.triggerConfig?.formFields?.length > 0 && (
+          <div className="webhook-fields-info">
+            <h4>Expected Fields:</h4>
+            <div className="table-wrapper">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workflow.triggerConfig.formFields.map((f, idx) => (
+                    <tr key={idx}>
+                      <td><code>{f.fieldName}</code></td>
+                      <td>{f.fieldType}</td>
+                      <td>{f.required ? '✓' : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

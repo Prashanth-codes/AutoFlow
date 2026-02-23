@@ -6,7 +6,7 @@ const workflowEngine = require('../services/workflowEngine');
 exports.handleWebhook = async (req, res) => {
   try {
     const { webhookId } = req.params;
-    const payload = req.body;
+    let payload = req.body;
 
     // Find workflow by webhook ID
     const workflow = await Workflow.findOne({ webhookId });
@@ -23,6 +23,40 @@ exports.handleWebhook = async (req, res) => {
         success: false,
         message: 'Workflow is inactive',
       });
+    }
+
+    // Flatten Google Form responses array into a simple key-value object
+    // Google Forms sends: { responses: [{ question: "Name", answer: "John" }, ...] }
+    // We normalize to: { name: "John", email: "john@example.com", ... }
+    if (workflow.triggerType === 'GOOGLE_FORM' && Array.isArray(payload.responses)) {
+      const flattened = {};
+      for (const item of payload.responses) {
+        if (item.question && item.answer !== undefined) {
+          // Convert question to a snake_case-style key: "Full Name" -> "full_name"
+          const key = item.question.trim().toLowerCase().replace(/\s+/g, '_');
+          flattened[key] = item.answer;
+        }
+      }
+      // Keep original responses as _rawResponses for reference
+      flattened._rawResponses = payload.responses;
+      payload = flattened;
+    }
+
+    // Validate form fields for GOOGLE_FORM trigger
+    if (
+      workflow.triggerType === 'GOOGLE_FORM' &&
+      workflow.triggerConfig?.formFields?.length > 0
+    ) {
+      const missingFields = workflow.triggerConfig.formFields
+        .filter((f) => f.required && (payload[f.fieldName] === undefined || payload[f.fieldName] === ''))
+        .map((f) => f.fieldLabel || f.fieldName);
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Missing required fields: ${missingFields.join(', ')}`,
+        });
+      }
     }
 
     // Create execution log entry

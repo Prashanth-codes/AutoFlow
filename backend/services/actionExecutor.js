@@ -6,8 +6,45 @@ const FormSubmission = require('../models/FormSubmission');
 const Order = require('../models/Order');
 
 class ActionExecutor {
+  /**
+   * Resolve {{fieldName}} placeholders in a string using payload values
+   */
+  resolveTemplate(template, payload) {
+    if (!template || typeof template !== 'string') return template;
+    return template.replace(/\{\{(\w+)\}\}/g, (match, fieldName) => {
+      return payload[fieldName] !== undefined ? payload[fieldName] : match;
+    });
+  }
+
+  /**
+   * Build a resolved config by applying fieldMappings from the action.
+   * fieldMappings is { configKey: 'payloadFieldName' } or { configKey: '{{field1}} - {{field2}}' }
+   */
+  resolveFieldMappings(action, payload) {
+    const { config = {}, fieldMappings = {} } = action;
+    const resolved = { ...config };
+
+    for (const [configKey, mapping] of Object.entries(fieldMappings)) {
+      if (typeof mapping === 'string') {
+        // If the mapping contains {{ }}, resolve it as a template
+        if (mapping.includes('{{')) {
+          resolved[configKey] = this.resolveTemplate(mapping, payload);
+        } else {
+          // Direct field reference
+          resolved[configKey] = payload[mapping] !== undefined ? payload[mapping] : resolved[configKey];
+        }
+      }
+    }
+
+    return resolved;
+  }
+
   async executeAction(action, payload, workflow) {
-    const { actionType, config } = action;
+    const { actionType } = action;
+
+    // Resolve field mappings to build dynamic config
+    const config = this.resolveFieldMappings(action, payload);
+    const resolvedAction = { ...action, config };
 
     switch (actionType) {
       case 'SEND_EMAIL':
@@ -34,15 +71,26 @@ class ActionExecutor {
   }
 
   async executeSendEmail(config, payload) {
-    const { sendToUser, sendToAdmin, subject, template } = config;
+    const { sendToAdmin, subject, template, customSubject, customBody, recipientField } = config;
+    // Default sendToUser to true when not explicitly set (matches frontend default)
+    const sendToUser = config.sendToUser !== undefined ? config.sendToUser : true;
     const recipients = [];
 
-    // Add user email - check multiple payload fields for email
+    // Add user email - check recipientField first, then multiple payload fields
     if (sendToUser) {
       let userEmail = null;
-      
-      // Try different field names for user email
-      if (payload.userEmail) {
+
+      // recipientField may already be resolved to the actual email via fieldMappings,
+      // or it may still be a payload key name — handle both
+      if (recipientField) {
+        if (recipientField.includes('@')) {
+          // Already resolved to an email address
+          userEmail = recipientField;
+        } else if (payload[recipientField]) {
+          // Still a field name reference
+          userEmail = payload[recipientField];
+        }
+      } else if (payload.userEmail) {
         userEmail = payload.userEmail;
       } else if (payload.customerEmail) {
         userEmail = payload.customerEmail;
@@ -66,12 +114,29 @@ class ActionExecutor {
       throw new Error('No recipients found for email');
     }
 
-    // Simple HTML template
-    const html = this.generateEmailTemplate(template || 'default', payload);
+    // Resolve custom subject with {{field}} placeholders
+    const resolvedSubject = customSubject
+      ? this.resolveTemplate(customSubject, payload)
+      : subject || 'Notification from Automation Platform';
+
+    // If customBody is set, use it (resolved); otherwise fall back to template
+    let html;
+    if (customBody) {
+      html = this.resolveTemplate(customBody, payload);
+      // Wrap in basic HTML if it doesn't contain HTML tags
+      if (!html.includes('<')) {
+        html = `<div style="font-family:sans-serif;line-height:1.6">${html.replace(/\n/g, '<br/>')}</div>`;
+      }
+    } else if (template === 'custom') {
+      // User chose "Custom" but left body empty — auto-generate from payload fields
+      html = this.generateFieldsEmail(payload);
+    } else {
+      html = this.generateEmailTemplate(template || 'default', payload);
+    }
 
     const result = await emailService.sendBulkEmail(
       recipients,
-      subject || 'Notification from Automation Platform',
+      resolvedSubject,
       html
     );
 
@@ -187,8 +252,13 @@ class ActionExecutor {
   }
 
   async executePostLinkedIn(config, payload) {
-    const { content, mediaUrl } = config;
-    const postContent = content || payload.postContent || 'Check this out!';
+    const { content, contentTemplate, mediaUrl } = config;
+    let postContent = content || payload.postContent || 'Check this out!';
+
+    // If contentTemplate is set, resolve placeholders
+    if (contentTemplate) {
+      postContent = this.resolveTemplate(contentTemplate, payload);
+    }
 
     // Call LinkedIn service
     const result = await linkedinService.postToLinkedIn(postContent, mediaUrl);
@@ -197,17 +267,22 @@ class ActionExecutor {
   }
 
   async executeSchedulePost(config, payload, workflow) {
-    const { platform, content, scheduledFor, mediaUrl } = config;
+    const { platform, content, contentTemplate, scheduledFor, mediaUrl } = config;
 
-    if (!platform || !content || !scheduledFor) {
-      throw new Error('Missing required config: platform, content, scheduledFor');
+    if (!platform || (!content && !contentTemplate) || !scheduledFor) {
+      throw new Error('Missing required config: platform, content/contentTemplate, scheduledFor');
     }
+
+    // Resolve template if set
+    const resolvedContent = contentTemplate
+      ? this.resolveTemplate(contentTemplate, payload)
+      : content;
 
     // Schedule using setTimeout (pass full workflow for organizationId access)
     const result = await scheduler.schedulePost(
       workflow,
       platform,
-      content,
+      resolvedContent,
       new Date(scheduledFor),
       mediaUrl
     );
@@ -226,6 +301,30 @@ class ActionExecutor {
     );
 
     return result;
+  }
+
+  /**
+   * Auto-generate a formatted email from all payload fields.
+   * Used when template is 'custom' but no customBody was provided.
+   */
+  generateFieldsEmail(payload) {
+    const rows = Object.entries(payload)
+      .map(([key, val]) => {
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        return `<tr><td style="padding:6px 12px;font-weight:600;color:#555;white-space:nowrap">${label}</td><td style="padding:6px 12px">${val}</td></tr>`;
+      })
+      .join('');
+
+    return `
+      <div style="font-family:sans-serif;line-height:1.6;max-width:600px">
+        <h2 style="color:#333">Form Submission</h2>
+        <table style="border-collapse:collapse;width:100%">
+          ${rows}
+        </table>
+        <hr style="margin:20px 0;border:none;border-top:1px solid #eee" />
+        <p style="color:#888;font-size:0.85rem">Sent by Automation Platform</p>
+      </div>
+    `;
   }
 
   generateEmailTemplate(template, payload) {

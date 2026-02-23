@@ -13,6 +13,8 @@ import {
   Linkedin,
   CalendarClock,
   Video,
+  FileText,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -33,15 +35,65 @@ const ACTION_TYPES = [
   { value: 'CREATE_ZOOM_MEETING', label: 'Create Zoom Meeting', icon: Video, color: '#2d8cff' },
 ];
 
-function ActionConfigFields({ action, onChange }) {
+function FieldInsertButtons({ formFields, onInsert }) {
+  if (!formFields || formFields.length === 0) return null;
+  return (
+    <div className="field-insert-bar">
+      <span className="field-insert-label">Insert field:</span>
+      <div className="field-insert-chips">
+        {formFields.map((f) => (
+          <button
+            key={f.fieldName}
+            type="button"
+            className="chip chip-primary"
+            onClick={() => onInsert(`{{${f.fieldName}}}`)}
+            title={`Insert {{${f.fieldName}}}`}
+          >
+            {f.fieldLabel || f.fieldName}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActionConfigFields({ action, onChange, formFields }) {
   const updateConfig = (key, value) => {
     onChange({ ...action, config: { ...action.config, [key]: value } });
   };
+
+  const updateFieldMapping = (key, value) => {
+    onChange({ ...action, fieldMappings: { ...action.fieldMappings, [key]: value } });
+  };
+
+  const hasFormFields = formFields && formFields.length > 0;
+
+  // Helper to get email-type fields
+  const emailFields = hasFormFields
+    ? formFields.filter((f) => f.fieldType === 'email' || f.fieldName.toLowerCase().includes('email'))
+    : [];
 
   switch (action.actionType) {
     case 'SEND_EMAIL':
       return (
         <div className="action-config">
+          {hasFormFields && (
+            <div className="form-group">
+              <label>Recipient Email Field</label>
+              <select
+                value={action.fieldMappings?.recipientField || ''}
+                onChange={(e) => updateFieldMapping('recipientField', e.target.value)}
+              >
+                <option value="">— Auto-detect from payload —</option>
+                {formFields.map((f) => (
+                  <option key={f.fieldName} value={f.fieldName}>
+                    {f.fieldLabel || f.fieldName} {f.fieldType === 'email' ? '(email)' : ''}
+                  </option>
+                ))}
+              </select>
+              <span className="form-hint">Which form field contains the recipient's email?</span>
+            </div>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label>Admin Email</label>
@@ -62,9 +114,41 @@ function ActionConfigFields({ action, onChange }) {
                 <option value="form_confirmation">Form Confirmation</option>
                 <option value="form_submission">Form Submission</option>
                 <option value="order_confirmation">Order Confirmation</option>
+                {hasFormFields && <option value="custom">Custom (use form fields)</option>}
               </select>
             </div>
           </div>
+          {hasFormFields && action.config?.template === 'custom' && (
+            <>
+              <div className="form-group">
+                <label>Custom Subject</label>
+                <input
+                  type="text"
+                  placeholder='e.g., New submission from {{name}}'
+                  value={action.config?.customSubject || ''}
+                  onChange={(e) => updateConfig('customSubject', e.target.value)}
+                />
+                <FieldInsertButtons
+                  formFields={formFields}
+                  onInsert={(tag) => updateConfig('customSubject', (action.config?.customSubject || '') + tag)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Custom Email Body</label>
+                <textarea
+                  placeholder={'e.g., Hello {{name}},\n\nThank you for submitting the form.\nYour email: {{email}}\n\nBest regards'}
+                  value={action.config?.customBody || ''}
+                  onChange={(e) => updateConfig('customBody', e.target.value)}
+                  rows={5}
+                />
+                <FieldInsertButtons
+                  formFields={formFields}
+                  onInsert={(tag) => updateConfig('customBody', (action.config?.customBody || '') + tag)}
+                />
+                <span className="form-hint">Use {'{{fieldName}}'} to insert form field values dynamically.</span>
+              </div>
+            </>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label className="checkbox-label">
@@ -103,6 +187,12 @@ function ActionConfigFields({ action, onChange }) {
               <option value="contact_form">Contact Form</option>
             </select>
           </div>
+          {hasFormFields && (
+            <div className="form-hint-box">
+              <FileText size={14} />
+              <span>All {formFields.length} form fields will be stored automatically in the database.</span>
+            </div>
+          )}
         </div>
       );
     case 'POST_LINKEDIN':
@@ -116,6 +206,12 @@ function ActionConfigFields({ action, onChange }) {
               onChange={(e) => updateConfig('contentTemplate', e.target.value)}
               rows={3}
             />
+            {hasFormFields && (
+              <FieldInsertButtons
+                formFields={formFields}
+                onInsert={(tag) => updateConfig('contentTemplate', (action.config?.contentTemplate || '') + tag)}
+              />
+            )}
           </div>
           <div className="form-group">
             <label>Visibility</label>
@@ -164,6 +260,12 @@ function ActionConfigFields({ action, onChange }) {
               onChange={(e) => updateConfig('contentTemplate', e.target.value)}
               rows={3}
             />
+            {hasFormFields && (
+              <FieldInsertButtons
+                formFields={formFields}
+                onInsert={(tag) => updateConfig('contentTemplate', (action.config?.contentTemplate || '') + tag)}
+              />
+            )}
           </div>
         </div>
       );
@@ -199,6 +301,12 @@ function ActionConfigFields({ action, onChange }) {
               onChange={(e) => updateConfig('agenda', e.target.value)}
               rows={2}
             />
+            {hasFormFields && (
+              <FieldInsertButtons
+                formFields={formFields}
+                onInsert={(tag) => updateConfig('agenda', (action.config?.agenda || '') + tag)}
+              />
+            )}
           </div>
         </div>
       );
@@ -223,15 +331,60 @@ export default function WorkflowCreate() {
     name: '',
     description: '',
     triggerType: '',
+    triggerConfig: { formFields: [] },
     actions: [],
   });
+
+  // ── Form Field Management ────────────────────
+  const addFormField = () => {
+    setForm((prev) => ({
+      ...prev,
+      triggerConfig: {
+        ...prev.triggerConfig,
+        formFields: [
+          ...prev.triggerConfig.formFields,
+          { fieldName: '', fieldLabel: '', fieldType: 'text', required: false, options: [] },
+        ],
+      },
+    }));
+  };
+
+  const updateFormField = (index, key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      triggerConfig: {
+        ...prev.triggerConfig,
+        formFields: prev.triggerConfig.formFields.map((f, i) =>
+          i === index ? { ...f, [key]: value } : f
+        ),
+      },
+    }));
+  };
+
+  const removeFormField = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      triggerConfig: {
+        ...prev.triggerConfig,
+        formFields: prev.triggerConfig.formFields.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const handleTriggerChange = (triggerType) => {
+    setForm((prev) => ({
+      ...prev,
+      triggerType,
+      triggerConfig: triggerType === 'GOOGLE_FORM' ? prev.triggerConfig : { formFields: [] },
+    }));
+  };
 
   const addAction = (actionType) => {
     setForm((prev) => ({
       ...prev,
       actions: [
         ...prev.actions,
-        { actionType, config: {}, order: prev.actions.length },
+        { actionType, config: {}, fieldMappings: {}, order: prev.actions.length },
       ],
     }));
   };
@@ -266,9 +419,21 @@ export default function WorkflowCreate() {
       toast.error('Please add at least one action');
       return;
     }
+    // Validate form fields if Google Form trigger
+    if (form.triggerType === 'GOOGLE_FORM' && form.triggerConfig.formFields.length > 0) {
+      const invalidFields = form.triggerConfig.formFields.filter((f) => !f.fieldName.trim());
+      if (invalidFields.length > 0) {
+        toast.error('All form fields must have a field name');
+        return;
+      }
+    }
     setLoading(true);
     try {
-      const { data } = await workflowAPI.create(form);
+      const payload = {
+        ...form,
+        triggerConfig: form.triggerType === 'GOOGLE_FORM' ? form.triggerConfig : undefined,
+      };
+      const { data } = await workflowAPI.create(payload);
       toast.success('Workflow created!');
       navigate(`/workflows/${data.workflow._id}`);
     } catch (err) {
@@ -335,7 +500,7 @@ export default function WorkflowCreate() {
                   key={t.value}
                   type="button"
                   className={`trigger-option ${form.triggerType === t.value ? 'selected' : ''}`}
-                  onClick={() => setForm({ ...form, triggerType: t.value })}
+                  onClick={() => handleTriggerChange(t.value)}
                 >
                   <span className="trigger-option-label">{t.label}</span>
                   <span className="trigger-option-desc">{t.desc}</span>
@@ -344,6 +509,109 @@ export default function WorkflowCreate() {
             </div>
           </div>
         </div>
+
+        {/* Google Form Fields Builder */}
+        {form.triggerType === 'GOOGLE_FORM' && (
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <FileText size={18} style={{ marginRight: 6 }} />
+                Form Fields
+              </h3>
+              <span className="card-header-hint">
+                Define the fields your Google Form will send
+              </span>
+            </div>
+            <div className="card-body">
+              {form.triggerConfig.formFields.length === 0 ? (
+                <div className="empty-inline">
+                  <FileText size={20} className="text-muted" />
+                  <span>No fields defined yet. Add fields to customize your workflow actions.</span>
+                </div>
+              ) : (
+                <div className="form-fields-list">
+                  {form.triggerConfig.formFields.map((field, idx) => (
+                    <div key={idx} className="form-field-row">
+                      <div className="form-field-number">{idx + 1}</div>
+                      <div className="form-field-inputs">
+                        <div className="form-group">
+                          <label>Field Name (key)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., name, email, phone"
+                            value={field.fieldName}
+                            onChange={(e) =>
+                              updateFormField(idx, 'fieldName', e.target.value.replace(/\s+/g, '_').toLowerCase())
+                            }
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Label</label>
+                          <input
+                            type="text"
+                            placeholder="e.g., Full Name"
+                            value={field.fieldLabel}
+                            onChange={(e) => updateFormField(idx, 'fieldLabel', e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Type</label>
+                          <select
+                            value={field.fieldType}
+                            onChange={(e) => updateFormField(idx, 'fieldType', e.target.value)}
+                          >
+                            <option value="text">Text</option>
+                            <option value="email">Email</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                            <option value="textarea">Long Text</option>
+                            <option value="select">Dropdown</option>
+                            <option value="checkbox">Checkbox</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="checkbox-label" style={{ marginTop: 22 }}>
+                            <input
+                              type="checkbox"
+                              checked={field.required}
+                              onChange={(e) => updateFormField(idx, 'required', e.target.checked)}
+                            />
+                            <span>Required</span>
+                          </label>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-icon btn-icon-danger"
+                        onClick={() => removeFormField(idx)}
+                        title="Remove field"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" className="btn btn-outline" onClick={addFormField} style={{ marginTop: 12 }}>
+                <Plus size={16} /> Add Field
+              </button>
+              {form.triggerConfig.formFields.length > 0 && (
+                <div className="form-fields-preview">
+                  <h4>Available placeholders for actions:</h4>
+                  <div className="field-insert-chips">
+                    {form.triggerConfig.formFields
+                      .filter((f) => f.fieldName)
+                      .map((f) => (
+                        <span key={f.fieldName} className="chip chip-muted">
+                          {`{{${f.fieldName}}}`}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="card">
@@ -381,7 +649,11 @@ export default function WorkflowCreate() {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      <ActionConfigFields action={action} onChange={(a) => updateAction(idx, a)} />
+                      <ActionConfigFields
+                        action={action}
+                        onChange={(a) => updateAction(idx, a)}
+                        formFields={form.triggerType === 'GOOGLE_FORM' ? form.triggerConfig.formFields : []}
+                      />
                     </div>
                   );
                 })}
