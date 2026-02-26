@@ -63,6 +63,7 @@ const workflowSchema = new mongoose.Schema(
             'POST_LINKEDIN',
             'SCHEDULE_POST',
             'CREATE_ZOOM_MEETING',
+            'API_REQUEST',
           ],
           required: true,
         },

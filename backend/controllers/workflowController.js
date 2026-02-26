@@ -43,7 +43,7 @@ exports.createWorkflow = async (req, res) => {
       createdBy: userId,
       triggerType,
       webhookId,
-      triggerConfig: triggerType === 'GOOGLE_FORM' && triggerConfig ? triggerConfig : undefined,
+      triggerConfig: (triggerType === 'GOOGLE_FORM' || triggerType === 'ECOMMERCE_ORDER') && triggerConfig ? triggerConfig : undefined,
       actions: actions.map((action, index) => ({
         ...action,
         fieldMappings: action.fieldMappings || {},
@@ -132,13 +132,29 @@ exports.updateWorkflow = async (req, res) => {
   try {
     const { id } = req.params;
     const { organizationId } = req.user;
-    const { name, description, actions, isActive, triggerConfig } = req.body;
+    const { name, description, actions, isActive, triggerType, triggerConfig } = req.body;
 
     // Build update object with only provided fields to avoid wiping unset ones
     const updateFields = {};
     if (name !== undefined) updateFields.name = name;
     if (description !== undefined) updateFields.description = description;
     if (isActive !== undefined) updateFields.isActive = isActive;
+    if (triggerType !== undefined) {
+      const validTriggers = [
+        'GOOGLE_FORM',
+        'PROJECT_ASSIGNMENT',
+        'SOCIAL_EVENT',
+        'ZOOM_EVENT',
+        'ECOMMERCE_ORDER',
+      ];
+      if (!validTriggers.includes(triggerType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid trigger type',
+        });
+      }
+      updateFields.triggerType = triggerType;
+    }
     if (triggerConfig !== undefined) updateFields.triggerConfig = triggerConfig;
     if (actions !== undefined) {
       updateFields.actions = actions.map((action, index) => ({

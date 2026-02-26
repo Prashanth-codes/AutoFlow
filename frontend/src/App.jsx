@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Workflows from './pages/Workflows';
 import WorkflowCreate from './pages/WorkflowCreate';
 import WorkflowDetail from './pages/WorkflowDetail';
+import WorkflowEdit from './pages/WorkflowEdit';
 import ExecutionLogs from './pages/ExecutionLogs';
 import ExecutionLogDetail from './pages/ExecutionLogDetail';
 import Connections from './pages/Connections';
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/workflows/create" element={<WorkflowCreate />} />
+        <Route path="/workflows/:id/edit" element={<WorkflowEdit />} />
         <Route path="/workflows/:id" element={<WorkflowDetail />} />
         <Route path="/logs" element={<ExecutionLogs />} />
         <Route path="/logs/:id" element={<ExecutionLogDetail />} />

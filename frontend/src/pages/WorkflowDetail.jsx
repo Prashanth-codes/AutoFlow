@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Copy,
   ExternalLink,
+  Pencil,
   ToggleLeft,
   ToggleRight,
   Trash2,
@@ -22,6 +23,7 @@ import {
   Video,
   Webhook,
   FileText,
+  Send,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -32,6 +34,7 @@ const ACTION_META = {
   POST_LINKEDIN: { label: 'Post to LinkedIn', icon: Linkedin, color: '#0077b5' },
   SCHEDULE_POST: { label: 'Schedule Post', icon: CalendarClock, color: '#fbbc04' },
   CREATE_ZOOM_MEETING: { label: 'Create Zoom Meeting', icon: Video, color: '#2d8cff' },
+  API_REQUEST: { label: 'API Request', icon: Send, color: '#8b5cf6' },
 };
 
 export default function WorkflowDetail() {
@@ -137,6 +140,9 @@ export default function WorkflowDetail() {
           </div>
         </div>
         <div className="page-header-actions">
+          <button className="btn btn-outline" onClick={() => navigate(`/workflows/${id}/edit`)}>
+            <Pencil size={16} /> Edit
+          </button>
           <button className="btn btn-outline" onClick={() => setShowWebhook(true)}>
             <Webhook size={16} /> Webhook
           </button>
@@ -162,7 +168,7 @@ export default function WorkflowDetail() {
                 <span className="info-label">Trigger Type</span>
                 <span className="info-value">{workflow.triggerType?.replace(/_/g, ' ')}</span>
               </div>
-              {workflow.triggerType === 'GOOGLE_FORM' &&
+              {(workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') &&
                 workflow.triggerConfig?.formFields?.length > 0 && (
                   <div className="info-row">
                     <span className="info-label">Form Fields</span>
@@ -223,8 +229,8 @@ export default function WorkflowDetail() {
         </div>
       </div>
 
-      {/* Form Fields Detail (Google Form only) */}
-      {workflow.triggerType === 'GOOGLE_FORM' &&
+      {/* Form Fields Detail */}
+      {(workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') &&
         workflow.triggerConfig?.formFields?.length > 0 && (
           <div className="card" style={{ marginTop: '1.5rem' }}>
             <div className="card-header">

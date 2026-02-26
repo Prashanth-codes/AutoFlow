@@ -5,6 +5,7 @@ import {
   Plus,
   Search,
   GitBranch,
+  Pencil,
   Trash2,
   ToggleLeft,
   ToggleRight,
@@ -162,6 +163,17 @@ export default function Workflows() {
                   {TRIGGER_LABELS[wf.triggerType] || wf.triggerType}
                 </div>
                 <div className="workflow-card-actions">
+                  <button
+                    className="btn-icon"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(`/workflows/${wf._id}/edit`);
+                    }}
+                    title="Edit"
+                  >
+                    <Pencil size={16} />
+                  </button>
                   <button
                     className="btn-icon"
                     onClick={(e) => handleToggle(e, wf)}

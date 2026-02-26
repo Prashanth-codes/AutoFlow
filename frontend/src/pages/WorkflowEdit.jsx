@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { workflowAPI } from '../services/api';
 import {
   ArrowLeft,
@@ -69,11 +69,6 @@ function ActionConfigFields({ action, onChange, formFields }) {
   };
 
   const hasFormFields = formFields && formFields.length > 0;
-
-  // Helper to get email-type fields
-  const emailFields = hasFormFields
-    ? formFields.filter((f) => f.fieldType === 'email' || f.fieldName.toLowerCase().includes('email'))
-    : [];
 
   switch (action.actionType) {
     case 'SEND_EMAIL':
@@ -391,9 +386,11 @@ function ActionConfigFields({ action, onChange, formFields }) {
   }
 }
 
-export default function WorkflowCreate() {
+export default function WorkflowEdit() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -401,6 +398,34 @@ export default function WorkflowCreate() {
     triggerConfig: { formFields: [] },
     actions: [],
   });
+
+  useEffect(() => {
+    loadWorkflow();
+  }, [id]);
+
+  const loadWorkflow = async () => {
+    try {
+      const { data } = await workflowAPI.getById(id);
+      const wf = data.workflow;
+      setForm({
+        name: wf.name || '',
+        description: wf.description || '',
+        triggerType: wf.triggerType || '',
+        triggerConfig: wf.triggerConfig || { formFields: [] },
+        actions: (wf.actions || []).map((a, i) => ({
+          actionType: a.actionType,
+          config: a.config || {},
+          fieldMappings: a.fieldMappings || {},
+          order: i,
+        })),
+      });
+    } catch {
+      toast.error('Failed to load workflow');
+      navigate('/workflows');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ── Form Field Management ────────────────────
   const addFormField = () => {
@@ -494,32 +519,43 @@ export default function WorkflowCreate() {
         return;
       }
     }
-    setLoading(true);
+    setSaving(true);
     try {
       const payload = {
-        ...form,
+        name: form.name,
+        description: form.description,
+        triggerType: form.triggerType,
         triggerConfig: (form.triggerType === 'GOOGLE_FORM' || form.triggerType === 'ECOMMERCE_ORDER') ? form.triggerConfig : undefined,
+        actions: form.actions,
       };
-      const { data } = await workflowAPI.create(payload);
-      toast.success('Workflow created!');
-      navigate(`/workflows/${data.workflow._id}`);
+      await workflowAPI.update(id, payload);
+      toast.success('Workflow updated!');
+      navigate(`/workflows/${id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create workflow');
+      toast.error(err.response?.data?.message || 'Failed to update workflow');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="page-loader">
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   return (
     <div className="page">
       <div className="page-header">
         <div className="page-header-back">
-          <button className="btn btn-ghost" onClick={() => navigate('/workflows')}>
+          <button className="btn btn-ghost" onClick={() => navigate(`/workflows/${id}`)}>
             <ArrowLeft size={18} /> Back
           </button>
           <div>
-            <h1 className="page-title">Create Workflow</h1>
-            <p className="page-subtitle">Configure your automation pipeline</p>
+            <h1 className="page-title">Edit Workflow</h1>
+            <p className="page-subtitle">Modify your automation pipeline</p>
           </div>
         </div>
       </div>
@@ -747,11 +783,11 @@ export default function WorkflowCreate() {
         </div>
 
         <div className="form-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/workflows')}>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate(`/workflows/${id}`)}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? <span className="spinner-sm" /> : <><Save size={18} /> Create Workflow</>}
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? <span className="spinner-sm" /> : <><Save size={18} /> Save Changes</>}
           </button>
         </div>
       </form>

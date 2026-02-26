@@ -28,7 +28,7 @@ exports.handleWebhook = async (req, res) => {
     // Flatten Google Form responses array into a simple key-value object
     // Google Forms sends: { responses: [{ question: "Name", answer: "John" }, ...] }
     // We normalize to: { name: "John", email: "john@example.com", ... }
-    if (workflow.triggerType === 'GOOGLE_FORM' && Array.isArray(payload.responses)) {
+    if ((workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') && Array.isArray(payload.responses)) {
       const flattened = {};
       for (const item of payload.responses) {
         if (item.question && item.answer !== undefined) {
@@ -42,9 +42,9 @@ exports.handleWebhook = async (req, res) => {
       payload = flattened;
     }
 
-    // Validate form fields for GOOGLE_FORM trigger
+    // Validate form fields for triggers with form fields
     if (
-      workflow.triggerType === 'GOOGLE_FORM' &&
+      (workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') &&
       workflow.triggerConfig?.formFields?.length > 0
     ) {
       const missingFields = workflow.triggerConfig.formFields

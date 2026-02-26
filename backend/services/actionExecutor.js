@@ -65,13 +65,16 @@ class ActionExecutor {
       case 'CREATE_ZOOM_MEETING':
         return await this.executeCreateZoomMeeting(config, payload);
 
+      case 'API_REQUEST':
+        return await this.executeApiRequest(config, payload);
+
       default:
         throw new Error(`Unknown action type: ${actionType}`);
     }
   }
 
   async executeSendEmail(config, payload) {
-    const { sendToAdmin, subject, template, customSubject, customBody, recipientField } = config;
+    const { sendToAdmin, customSubject, customBody, recipientField } = config;
     // Default sendToUser to true when not explicitly set (matches frontend default)
     const sendToUser = config.sendToUser !== undefined ? config.sendToUser : true;
     const recipients = [];
@@ -117,9 +120,9 @@ class ActionExecutor {
     // Resolve custom subject with {{field}} placeholders
     const resolvedSubject = customSubject
       ? this.resolveTemplate(customSubject, payload)
-      : subject || 'Notification from Automation Platform';
+      : 'Notification from Automation Platform';
 
-    // If customBody is set, use it (resolved); otherwise fall back to template
+    // Use custom body if provided; otherwise auto-generate from payload fields
     let html;
     if (customBody) {
       html = this.resolveTemplate(customBody, payload);
@@ -127,11 +130,8 @@ class ActionExecutor {
       if (!html.includes('<')) {
         html = `<div style="font-family:sans-serif;line-height:1.6">${html.replace(/\n/g, '<br/>')}</div>`;
       }
-    } else if (template === 'custom') {
-      // User chose "Custom" but left body empty — auto-generate from payload fields
-      html = this.generateFieldsEmail(payload);
     } else {
-      html = this.generateEmailTemplate(template || 'default', payload);
+      html = this.generateFieldsEmail(payload);
     }
 
     const result = await emailService.sendBulkEmail(
@@ -303,6 +303,90 @@ class ActionExecutor {
     return result;
   }
 
+  async executeApiRequest(config, payload) {
+    const axios = require('axios');
+    const {
+      method = 'GET',
+      url,
+      headers: rawHeaders,
+      body: rawBody,
+      queryParams: rawQueryParams,
+    } = config;
+
+    if (!url) {
+      throw new Error('API Request: URL is required');
+    }
+
+    // Resolve {{field}} placeholders in URL
+    const resolvedUrl = this.resolveTemplate(url, payload);
+
+    // Parse and resolve headers
+    let parsedHeaders = {};
+    if (rawHeaders) {
+      try {
+        const headersObj = typeof rawHeaders === 'string' ? JSON.parse(rawHeaders) : rawHeaders;
+        for (const [key, val] of Object.entries(headersObj)) {
+          parsedHeaders[key] = this.resolveTemplate(String(val), payload);
+        }
+      } catch (e) {
+        throw new Error(`API Request: Invalid headers JSON — ${e.message}`);
+      }
+    }
+
+    // Parse and resolve query params
+    let parsedParams = {};
+    if (rawQueryParams) {
+      try {
+        const paramsObj = typeof rawQueryParams === 'string' ? JSON.parse(rawQueryParams) : rawQueryParams;
+        for (const [key, val] of Object.entries(paramsObj)) {
+          parsedParams[key] = this.resolveTemplate(String(val), payload);
+        }
+      } catch (e) {
+        throw new Error(`API Request: Invalid query params JSON — ${e.message}`);
+      }
+    }
+
+    // Parse and resolve body
+    let parsedBody = undefined;
+    if (rawBody && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+      try {
+        const bodyStr = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+        const resolvedBodyStr = this.resolveTemplate(bodyStr, payload);
+        parsedBody = JSON.parse(resolvedBodyStr);
+      } catch (e) {
+        // If it can't be parsed as JSON, send as resolved string
+        parsedBody = this.resolveTemplate(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody), payload);
+      }
+    }
+
+    // Set default Content-Type for requests with body
+    if (parsedBody && !parsedHeaders['Content-Type'] && !parsedHeaders['content-type']) {
+      parsedHeaders['Content-Type'] = 'application/json';
+    }
+
+    try {
+      const response = await axios({
+        method: method.toUpperCase(),
+        url: resolvedUrl,
+        headers: parsedHeaders,
+        params: Object.keys(parsedParams).length > 0 ? parsedParams : undefined,
+        data: parsedBody,
+        timeout: 30000,
+        validateStatus: () => true, // Don't throw on non-2xx
+      });
+
+      return {
+        success: response.status >= 200 && response.status < 300,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data,
+      };
+    } catch (error) {
+      throw new Error(`API Request failed: ${error.message}`);
+    }
+  }
+
   /**
    * Auto-generate a formatted email from all payload fields.
    * Used when template is 'custom' but no customBody was provided.
@@ -327,58 +411,6 @@ class ActionExecutor {
     `;
   }
 
-  generateEmailTemplate(template, payload) {
-    // Extract user name from multiple possible field names
-    const userName = payload.userName || payload.customerName || payload.submitterName || payload.name || 'User';
-    const userEmail = payload.userEmail || payload.customerEmail || payload.submitterEmail || payload.email || 'N/A';
-    
-    const templates = {
-      default: `
-        <h2>Notification</h2>
-        <p>Hello ${userName},</p>
-        <p>Your request has been processed successfully.</p>
-        <hr />
-        <h3>Details:</h3>
-        <pre>${JSON.stringify(payload, null, 2)}</pre>
-        <p>Thank you!</p>
-      `,
-      form_confirmation: `
-        <h2>Thank You for Your Submission!</h2>
-        <p>Hello ${userName},</p>
-        <p>We have received your form submission. Thank you for reaching out!</p>
-        <hr />
-        <h3>Submission Details:</h3>
-        <p><strong>Name:</strong> ${userName}</p>
-        <p><strong>Email:</strong> ${userEmail}</p>
-        <p><strong>Message:</strong> ${payload.message || 'N/A'}</p>
-        <p><strong>Submitted at:</strong> ${payload.timestamp || new Date().toISOString()}</p>
-        <hr />
-        <p>We will get back to you soon!</p>
-      `,
-      order_confirmation: `
-        <h2>Order Confirmation</h2>
-        <p>Hello ${userName},</p>
-        <p>Thank you for your order!</p>
-        <hr />
-        <h3>Order Details:</h3>
-        <p><strong>Order ID:</strong> ${payload.orderId || 'N/A'}</p>
-        <p><strong>Product:</strong> ${payload.productName || 'N/A'}</p>
-        <p><strong>Amount:</strong> $${payload.amount || '0'}</p>
-        <p><strong>Status:</strong> ${payload.paymentStatus || 'Pending'}</p>
-        <hr />
-        <p>Thank you for your business!</p>
-      `,
-      form_submission: `
-        <h2>Form Submission Received</h2>
-        <p>Hello ${userName},</p>
-        <p>We received your submission:</p>
-        <hr />
-        <pre>${JSON.stringify(payload, null, 2)}</pre>
-      `,
-    };
-
-    return templates[template] || templates.default;
-  }
 }
 
 module.exports = new ActionExecutor();
