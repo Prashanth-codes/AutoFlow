@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { workflowAPI, logsAPI } from '../services/api';
+import { workflowAPI, logsAPI, zoomAPI } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import {
@@ -43,8 +43,10 @@ export default function WorkflowDetail() {
   const [workflow, setWorkflow] = useState(null);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [logs, setLogs] = useState([]);
+  const [zoomMeetings, setZoomMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showWebhook, setShowWebhook] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(null);
 
   useEffect(() => {
     loadWorkflow();
@@ -68,6 +70,14 @@ export default function WorkflowDetail() {
         setLogs(logRes.data.logs || []);
       } catch {
         // logs may be empty
+      }
+
+      // Load zoom meetings if ZOOM_EVENT trigger
+      try {
+        const zmRes = await zoomAPI.getMeetings(id);
+        setZoomMeetings(zmRes.data.meetings || []);
+      } catch {
+        // zoom meetings may be empty
       }
     } catch {
       toast.error('Failed to load workflow');
@@ -175,6 +185,16 @@ export default function WorkflowDetail() {
                     <span className="info-value">{workflow.triggerConfig.formFields.length} fields defined</span>
                   </div>
                 )}
+              {workflow.triggerType === 'ZOOM_EVENT' && workflow.triggerConfig?.zoomConfig && (
+                <div className="info-row">
+                  <span className="info-label">Zoom Config</span>
+                  <span className="info-value">
+                    {workflow.triggerConfig.zoomConfig.meetingTopic || 'Default'} •{' '}
+                    {workflow.triggerConfig.zoomConfig.meetingDuration || 60}min •{' '}
+                    {workflow.triggerConfig.zoomConfig.attendees?.length || 0} attendee(s)
+                  </span>
+                </div>
+              )}
               <div className="info-row">
                 <span className="info-label">Actions</span>
                 <span className="info-value">{workflow.actions?.length || 0} step{(workflow.actions?.length || 0) !== 1 && 's'}</span>
@@ -270,6 +290,147 @@ export default function WorkflowDetail() {
             </div>
           </div>
         )}
+
+      {/* Zoom Configuration Detail */}
+      {workflow.triggerType === 'ZOOM_EVENT' && workflow.triggerConfig?.zoomConfig && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div className="card-header">
+            <h3 className="card-title">
+              <Video size={18} style={{ marginRight: 6 }} /> Zoom Configuration
+            </h3>
+          </div>
+          <div className="card-body">
+            <div className="info-list">
+              <div className="info-row">
+                <span className="info-label">Meeting Topic</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.meetingTopic || '—'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Duration</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.meetingDuration || 60} minutes</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Timezone</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.timezone || 'UTC'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Auto Recording</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.autoRecording || 'cloud'}</span>
+              </div>
+              {workflow.triggerConfig.zoomConfig.meetingAgenda && (
+                <div className="info-row">
+                  <span className="info-label">Agenda</span>
+                  <span className="info-value">{workflow.triggerConfig.zoomConfig.meetingAgenda}</span>
+                </div>
+              )}
+              <div className="info-row">
+                <span className="info-label">Email Invites</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.sendEmailInvite !== false ? '✓ Enabled' : 'Disabled'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Store in Database</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.storeInDatabase !== false ? '✓ Enabled' : 'Disabled'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Fetch Transcript</span>
+                <span className="info-value">{workflow.triggerConfig.zoomConfig.fetchTranscript !== false ? '✓ Enabled' : 'Disabled'}</span>
+              </div>
+              {workflow.triggerConfig.zoomConfig.attendees?.length > 0 && (
+                <div className="info-row">
+                  <span className="info-label">Attendees</span>
+                  <span className="info-value">
+                    {workflow.triggerConfig.zoomConfig.attendees.map((a, i) => (
+                      <span key={i} className="chip chip-muted" style={{ marginRight: 4, marginBottom: 4 }}>
+                        {a.name ? `${a.name} (${a.email})` : a.email}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Zoom Meetings History */}
+      {workflow.triggerType === 'ZOOM_EVENT' && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <div className="card-header">
+            <h3 className="card-title">
+              <Video size={18} style={{ marginRight: 6 }} /> Zoom Meetings
+            </h3>
+            <span className="card-header-hint">{zoomMeetings.length} meeting{zoomMeetings.length !== 1 && 's'}</span>
+          </div>
+          <div className="card-body">
+            {zoomMeetings.length === 0 ? (
+              <div className="empty-inline">
+                <Video size={20} className="text-muted" />
+                <span>No Zoom meetings yet. Trigger the webhook to create one.</span>
+              </div>
+            ) : (
+              <div className="table-wrapper">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Topic</th>
+                      <th>Status</th>
+                      <th>Duration</th>
+                      <th>Attendees</th>
+                      <th>Transcript</th>
+                      <th>Created</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {zoomMeetings.map((m) => (
+                      <tr key={m._id}>
+                        <td style={{ fontWeight: 500 }}>{m.topic}</td>
+                        <td>
+                          <span
+                            className={`chip ${
+                              m.status === 'ended' ? 'chip-success' :
+                              m.status === 'started' ? 'chip-warning' :
+                              m.status === 'scheduled' ? 'chip-primary' : 'chip-muted'
+                            }`}
+                            style={{ fontSize: '0.75rem' }}
+                          >
+                            {m.status}
+                          </span>
+                        </td>
+                        <td>{m.actualDuration || m.duration} min</td>
+                        <td>{m.attendees?.length || 0}</td>
+                        <td>
+                          {m.transcript ? (
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => setShowTranscript(m)}
+                              style={{ fontSize: '0.8rem' }}
+                            >
+                              📝 View
+                            </button>
+                          ) : (
+                            <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                              {m.status === 'ended' ? 'Processing...' : '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td>{formatDate(m.createdAt)}</td>
+                        <td>
+                          {m.joinUrl && (
+                            <a href={m.joinUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
+                              <ExternalLink size={14} /> Join
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Execution Logs */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
@@ -373,6 +534,56 @@ export default function WorkflowDetail() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Transcript Modal */}
+      <Modal isOpen={!!showTranscript} onClose={() => setShowTranscript(null)} title={`Transcript: ${showTranscript?.topic || ''}`}>
+        {showTranscript && (
+          <div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div>
+                <span style={{ color: '#666', fontSize: '0.8rem' }}>Meeting ID</span>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{showTranscript.meetingId}</div>
+              </div>
+              <div>
+                <span style={{ color: '#666', fontSize: '0.8rem' }}>Duration</span>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{showTranscript.actualDuration || showTranscript.duration} min</div>
+              </div>
+              <div>
+                <span style={{ color: '#666', fontSize: '0.8rem' }}>Participants</span>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{showTranscript.participantCount || 'N/A'}</div>
+              </div>
+              {showTranscript.endedAt && (
+                <div>
+                  <span style={{ color: '#666', fontSize: '0.8rem' }}>Ended At</span>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{formatDate(showTranscript.endedAt)}</div>
+                </div>
+              )}
+            </div>
+            {showTranscript.recordingUrl && (
+              <div style={{ marginBottom: 16 }}>
+                <a href={showTranscript.recordingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
+                  🎥 View Recording
+                </a>
+              </div>
+            )}
+            <div
+              style={{
+                background: '#f8f9fa',
+                padding: 16,
+                borderRadius: 8,
+                maxHeight: 400,
+                overflowY: 'auto',
+                fontFamily: 'monospace',
+                fontSize: '0.85rem',
+                lineHeight: 1.7,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {showTranscript.transcript || 'Transcript is not yet available. It will appear here after Zoom finishes processing the recording.'}
             </div>
           </div>
         )}

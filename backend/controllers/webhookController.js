@@ -42,6 +42,24 @@ exports.handleWebhook = async (req, res) => {
       payload = flattened;
     }
 
+    // For ZOOM_EVENT triggers, inject meeting config from workflow triggerConfig
+    if (workflow.triggerType === 'ZOOM_EVENT' && workflow.triggerConfig?.zoomConfig) {
+      const zc = workflow.triggerConfig.zoomConfig;
+      payload = {
+        ...payload,
+        meetingTopic: payload.meetingTopic || zc.meetingTopic || 'Zoom Meeting',
+        duration: payload.duration || zc.meetingDuration || 60,
+        agenda: payload.agenda || zc.meetingAgenda || '',
+        password: payload.password || zc.meetingPassword || '',
+        timezone: payload.timezone || zc.timezone || 'UTC',
+        autoRecording: payload.autoRecording || zc.autoRecording || 'cloud',
+        attendees: payload.attendees || zc.attendees || [],
+        sendEmailInvite: zc.sendEmailInvite !== false,
+        storeInDatabase: zc.storeInDatabase !== false,
+        fetchTranscript: zc.fetchTranscript !== false,
+      };
+    }
+
     // Validate form fields for triggers with form fields
     if (
       (workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') &&

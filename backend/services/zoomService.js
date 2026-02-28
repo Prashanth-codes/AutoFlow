@@ -4,67 +4,283 @@ class ZoomService {
   constructor() {
     this.clientId = process.env.ZOOM_CLIENT_ID;
     this.clientSecret = process.env.ZOOM_CLIENT_SECRET;
+    this.accountId = process.env.ZOOM_ACCOUNT_ID;
     this.apiUrl = 'https://api.zoom.us/v2';
+    this._accessToken = null;
+    this._tokenExpiry = null;
   }
 
-  async createMeeting(topic, duration = 60, startTime = null) {
+  /**
+   * Get an OAuth access token using Server-to-Server OAuth (Account Credentials).
+   * Caches the token until it expires.
+   */
+  async getAccessToken() {
+    // Return cached token if still valid
+    if (this._accessToken && this._tokenExpiry && Date.now() < this._tokenExpiry) {
+      return this._accessToken;
+    }
+
     try {
-      if (!this.clientId || !this.clientSecret) {
-        throw new Error('Zoom credentials not configured');
+      const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+      const response = await axios.post(
+        'https://zoom.us/oauth/token',
+        new URLSearchParams({
+          grant_type: 'account_credentials',
+          account_id: this.accountId,
+        }).toString(),
+        {
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      this._accessToken = response.data.access_token;
+      // Cache token — expire 5 minutes early for safety
+      this._tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
+      return this._accessToken;
+    } catch (error) {
+      console.error('Error getting Zoom access token:', error.response?.data || error.message);
+      throw new Error('Failed to authenticate with Zoom API');
+    }
+  }
+
+  /**
+   * Create a Zoom meeting via the Zoom REST API.
+   * @param {Object} options
+   * @param {string} options.topic - Meeting topic
+   * @param {number} options.duration - Duration in minutes
+   * @param {string} options.agenda - Meeting agenda
+   * @param {string} options.startTime - ISO date string
+   * @param {string} options.timezone - Timezone string
+   * @param {string} options.password - Meeting password
+   * @param {Array}  options.attendees - [{ name, email }]
+   * @param {boolean} options.autoRecording - 'cloud' | 'local' | 'none'
+   */
+  async createMeeting({
+    topic = 'Meeting',
+    duration = 60,
+    agenda = '',
+    startTime = null,
+    timezone = 'UTC',
+    password = '',
+    attendees = [],
+    autoRecording = 'cloud',
+  } = {}) {
+    try {
+      if (!this.clientId || !this.clientSecret || !this.accountId) {
+        console.warn('Zoom credentials not fully configured — using mock mode');
+        return this._mockCreateMeeting({ topic, duration, agenda, startTime, attendees });
       }
 
-      // Mock implementation
-      const meetingData = {
+      const token = await this.getAccessToken();
+
+      const meetingPayload = {
         topic,
+        type: startTime ? 2 : 1, // 2 = scheduled, 1 = instant
         duration,
-        startTime: startTime || new Date(),
-        createdAt: new Date(),
+        agenda,
+        timezone,
+        settings: {
+          host_video: true,
+          participant_video: true,
+          join_before_host: true,
+          mute_upon_entry: true,
+          auto_recording: autoRecording,
+          waiting_room: false,
+          meeting_authentication: false,
+        },
       };
 
-      console.log('Creating Zoom meeting:', meetingData);
+      if (startTime) {
+        meetingPayload.start_time = new Date(startTime).toISOString();
+      }
 
-      // Actual API call would look like:
-      // const token = await this.getAccessToken();
-      // const response = await axios.post(`${this.apiUrl}/users/me/meetings`, {
-      //   topic,
-      //   duration,
-      //   start_time: startTime.toISOString(),
-      //   type: 2
-      // }, {
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`,
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
+      if (password) {
+        meetingPayload.password = password;
+      }
+
+      const response = await axios.post(
+        `${this.apiUrl}/users/me/meetings`,
+        meetingPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const meeting = response.data;
 
       return {
         success: true,
         message: 'Zoom meeting created successfully',
-        meetingId: `zoom_${Date.now()}`,
-        topic,
-        joinUrl: `https://zoom.us/my/meeting/${Date.now()}`,
+        meetingId: String(meeting.id),
+        topic: meeting.topic,
+        joinUrl: meeting.join_url,
+        startUrl: meeting.start_url,
+        password: meeting.password || '',
+        hostEmail: meeting.host_email || '',
+        duration: meeting.duration,
+        startTime: meeting.start_time,
+        timezone: meeting.timezone,
+        agenda: meeting.agenda || '',
+        rawResponse: meeting,
       };
     } catch (error) {
-      console.error('Zoom meeting creation error:', error);
+      console.error('Zoom meeting creation error:', error.response?.data || error.message);
+      // Fallback to mock if API fails in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Falling back to mock Zoom meeting creation');
+        return this._mockCreateMeeting({ topic, duration, agenda, startTime, attendees });
+      }
+      throw new Error(`Zoom meeting creation failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  /**
+   * Fetch meeting details by ID
+   */
+  async getMeeting(meetingId) {
+    try {
+      const token = await this.getAccessToken();
+      const response = await axios.get(`${this.apiUrl}/meetings/${meetingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Zoom meeting:', error.response?.data || error.message);
       throw error;
     }
   }
 
-  async getAccessToken() {
+  /**
+   * Fetch recordings for a meeting
+   */
+  async getMeetingRecordings(meetingId) {
     try {
-      const response = await axios.post('https://zoom.us/oauth/token', null, {
-        params: {
-          grant_type: 'client_credentials',
-          client_id: this.clientId,
-          client_secret: this.clientSecret,
-        },
+      const token = await this.getAccessToken();
+      const response = await axios.get(
+        `${this.apiUrl}/meetings/${meetingId}/recordings`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Zoom recordings:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch transcript for a meeting from cloud recordings.
+   * Zoom stores transcripts as VTT files inside recording files.
+   */
+  async getMeetingTranscript(meetingId) {
+    try {
+      const recordings = await this.getMeetingRecordings(meetingId);
+      if (!recordings || !recordings.recording_files) {
+        return { transcript: '', transcriptUrl: '' };
+      }
+
+      // Find the transcript file (type: 'TRANSCRIPT')
+      const transcriptFile = recordings.recording_files.find(
+        (f) => f.file_type === 'TRANSCRIPT' || f.recording_type === 'audio_transcript'
+      );
+
+      if (!transcriptFile) {
+        return { transcript: '', transcriptUrl: '' };
+      }
+
+      const transcriptUrl = transcriptFile.download_url;
+
+      // Download the VTT content
+      const token = await this.getAccessToken();
+      const transcriptResponse = await axios.get(transcriptUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { access_token: token },
       });
 
-      return response.data.access_token;
+      const rawVtt = typeof transcriptResponse.data === 'string'
+        ? transcriptResponse.data
+        : JSON.stringify(transcriptResponse.data);
+
+      // Parse VTT to plain text
+      const transcript = this._parseVttToText(rawVtt);
+
+      return {
+        transcript,
+        transcriptUrl,
+      };
     } catch (error) {
-      console.error('Error getting Zoom access token:', error);
-      throw error;
+      console.error('Error fetching Zoom transcript:', error.message);
+      return { transcript: '', transcriptUrl: '' };
     }
+  }
+
+  /**
+   * Get recording download URL (video)
+   */
+  async getRecordingUrl(meetingId) {
+    try {
+      const recordings = await this.getMeetingRecordings(meetingId);
+      if (!recordings || !recordings.recording_files) return '';
+
+      const videoFile = recordings.recording_files.find(
+        (f) => f.file_type === 'MP4' || f.recording_type === 'shared_screen_with_speaker_view'
+      );
+
+      return videoFile ? videoFile.download_url : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Parse VTT (WebVTT) subtitle content to plain text
+   */
+  _parseVttToText(vtt) {
+    if (!vtt) return '';
+    const lines = vtt.split('\n');
+    const textLines = [];
+    for (const line of lines) {
+      // Skip VTT headers, timestamps, and blank lines
+      if (
+        line.startsWith('WEBVTT') ||
+        line.includes('-->') ||
+        line.trim() === '' ||
+        /^\d+$/.test(line.trim())
+      ) {
+        continue;
+      }
+      textLines.push(line.trim());
+    }
+    return textLines.join(' ').trim();
+  }
+
+  /**
+   * Mock implementation for development / when credentials aren't configured
+   */
+  _mockCreateMeeting({ topic, duration, agenda, startTime, attendees }) {
+    const mockId = `zoom_${Date.now()}`;
+    console.log('🎥 [MOCK] Creating Zoom meeting:', { topic, duration, agenda, attendees: attendees?.length || 0 });
+
+    return {
+      success: true,
+      message: 'Zoom meeting created successfully (mock)',
+      meetingId: mockId,
+      topic,
+      joinUrl: `https://zoom.us/j/${mockId}`,
+      startUrl: `https://zoom.us/s/${mockId}`,
+      password: 'mock123',
+      hostEmail: process.env.EMAIL_USER || 'host@example.com',
+      duration: duration || 60,
+      startTime: startTime || new Date().toISOString(),
+      timezone: 'UTC',
+      agenda: agenda || '',
+      rawResponse: null,
+    };
   }
 }
 

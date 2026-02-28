@@ -43,7 +43,7 @@ exports.createWorkflow = async (req, res) => {
       createdBy: userId,
       triggerType,
       webhookId,
-      triggerConfig: (triggerType === 'GOOGLE_FORM' || triggerType === 'ECOMMERCE_ORDER') && triggerConfig ? triggerConfig : undefined,
+      triggerConfig: (triggerType === 'GOOGLE_FORM' || triggerType === 'ECOMMERCE_ORDER' || triggerType === 'ZOOM_EVENT') && triggerConfig ? triggerConfig : undefined,
       actions: actions.map((action, index) => ({
         ...action,
         fieldMappings: action.fieldMappings || {},

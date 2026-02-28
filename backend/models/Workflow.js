@@ -51,6 +51,28 @@ const workflowSchema = new mongoose.Schema(
           options: [String], // for select type
         },
       ],
+      // Zoom trigger configuration
+      zoomConfig: {
+        meetingTopic: { type: String, default: '' },
+        meetingDuration: { type: Number, default: 60 },
+        meetingAgenda: { type: String, default: '' },
+        meetingPassword: { type: String, default: '' },
+        timezone: { type: String, default: 'UTC' },
+        autoRecording: {
+          type: String,
+          enum: ['cloud', 'local', 'none'],
+          default: 'cloud',
+        },
+        attendees: [
+          {
+            name: { type: String },
+            email: { type: String, required: true },
+          },
+        ],
+        sendEmailInvite: { type: Boolean, default: true },
+        storeInDatabase: { type: Boolean, default: true },
+        fetchTranscript: { type: Boolean, default: true },
+      },
     },
     actions: [
       {

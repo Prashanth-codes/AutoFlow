@@ -59,6 +59,12 @@ export const logsAPI = {
   getById: (logId) => api.get(`/api/webhook/logs/${logId}`),
 };
 
+// ─── Zoom Meetings ───────────────────────────────
+export const zoomAPI = {
+  getMeetings: (workflowId) => api.get(`/api/zoom/meetings/${workflowId}`),
+  getMeeting: (meetingDbId) => api.get(`/api/zoom/meeting/${meetingDbId}`),
+};
+
 // ─── Health ──────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/api/health'),
