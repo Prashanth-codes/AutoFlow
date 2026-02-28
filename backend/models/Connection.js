@@ -14,7 +14,7 @@ const connectionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['linkedin', 'zoom', 'gmail', 'stripe', 'shopify', 'custom'],
+      enum: ['instagram', 'zoom', 'gmail', 'stripe', 'shopify', 'custom'],
       required: [true, 'Please provide connection type'],
     },
     credentials: {

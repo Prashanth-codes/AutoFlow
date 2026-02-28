@@ -51,7 +51,7 @@ export default function Login() {
               </div>
               <div className="auth-feature">
                 <div className="auth-feature-dot" />
-                <span>LinkedIn, Zoom, Email integrations</span>
+                <span>Instagram, Zoom, Email integrations</span>
               </div>
               <div className="auth-feature">
                 <div className="auth-feature-dot" />

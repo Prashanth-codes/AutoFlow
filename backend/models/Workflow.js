@@ -60,7 +60,7 @@ const workflowSchema = new mongoose.Schema(
             'SEND_EMAIL',
             'STORE_DB',
             'ASSIGN_EMPLOYEE',
-            'POST_LINKEDIN',
+            'POST_INSTAGRAM',
             'SCHEDULE_POST',
             'CREATE_ZOOM_MEETING',
             'API_REQUEST',

@@ -6,6 +6,9 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const instagramRoutes = require('./routes/instagramRoutes');
+const instagramOAuthRoutes = require('./routes/instagramOAuthRoutes');
+const commentRuleRoutes = require('./routes/commentRuleRoutes');
 const scheduler = require('./services/scheduler');
 
 const app = express();
@@ -22,6 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/webhook', webhookRoutes);
+app.use('/api/webhook/instagram', instagramRoutes);
+app.use('/api/instagram-oauth', instagramOAuthRoutes);
+app.use('/api/comment-rules', commentRuleRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -1,5 +1,5 @@
 const emailService = require('../utils/emailService');
-const linkedinService = require('./linkedinService');
+const instagramService = require('./instagramService');
 const zoomService = require('./zoomService');
 const scheduler = require('./scheduler');
 const FormSubmission = require('../models/FormSubmission');
@@ -56,8 +56,8 @@ class ActionExecutor {
       case 'ASSIGN_EMPLOYEE':
         return await this.executeAssignEmployee(config, payload, workflow);
 
-      case 'POST_LINKEDIN':
-        return await this.executePostLinkedIn(config, payload);
+      case 'POST_INSTAGRAM':
+        return await this.executePostInstagram(config, payload);
 
       case 'SCHEDULE_POST':
         return await this.executeSchedulePost(config, payload, workflow);
@@ -251,7 +251,7 @@ class ActionExecutor {
     };
   }
 
-  async executePostLinkedIn(config, payload) {
+  async executePostInstagram(config, payload) {
     const { content, contentTemplate, mediaUrl } = config;
     let postContent = content || payload.postContent || 'Check this out!';
 
@@ -260,8 +260,8 @@ class ActionExecutor {
       postContent = this.resolveTemplate(contentTemplate, payload);
     }
 
-    // Call LinkedIn service
-    const result = await linkedinService.postToLinkedIn(postContent, mediaUrl);
+    // Call Instagram service
+    const result = await instagramService.postToInstagram(postContent, mediaUrl);
 
     return result;
   }

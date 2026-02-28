@@ -6,6 +6,7 @@ import {
   Plug,
   Settings,
   Zap,
+  MessageCircle,
 } from 'lucide-react';
 
 const navItems = [
@@ -13,6 +14,7 @@ const navItems = [
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
   { to: '/logs', icon: ScrollText, label: 'Execution Logs' },
   { to: '/connections', icon: Plug, label: 'Connections' },
+  { to: '/comment-automation', icon: MessageCircle, label: 'Comment Automation' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

@@ -1,5 +1,5 @@
 const ScheduledPost = require('../models/ScheduledPost');
-const linkedinService = require('./linkedinService');
+const instagramService = require('./instagramService');
 
 class Scheduler {
   constructor() {
@@ -67,8 +67,8 @@ class Scheduler {
 
       // Execute based on platform
       switch (scheduledPost.platform) {
-        case 'linkedin':
-          await linkedinService.postToLinkedIn(
+        case 'instagram':
+          await instagramService.postToInstagram(
             scheduledPost.content,
             scheduledPost.mediaUrls?.[0]
           );

@@ -14,6 +14,7 @@ import ExecutionLogs from './pages/ExecutionLogs';
 import ExecutionLogDetail from './pages/ExecutionLogDetail';
 import Connections from './pages/Connections';
 import Settings from './pages/Settings';
+import CommentAutomation from './pages/CommentAutomation';
 
 function AppRoutes() {
   const { isAuthenticated, loading } = useAuth();
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/logs" element={<ExecutionLogs />} />
         <Route path="/logs/:id" element={<ExecutionLogDetail />} />
         <Route path="/connections" element={<Connections />} />
+        <Route path="/comment-automation" element={<CommentAutomation />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 

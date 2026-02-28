@@ -10,7 +10,7 @@ import {
   Mail,
   Database,
   UserCheck,
-  Linkedin,
+  Instagram,
   CalendarClock,
   Video,
   FileText,
@@ -31,7 +31,7 @@ const ACTION_TYPES = [
   { value: 'SEND_EMAIL', label: 'Send Email', icon: Mail, color: '#ea4335' },
   { value: 'STORE_DB', label: 'Store in Database', icon: Database, color: '#34a853' },
   { value: 'ASSIGN_EMPLOYEE', label: 'Assign Employee', icon: UserCheck, color: '#4285f4' },
-  { value: 'POST_LINKEDIN', label: 'Post to LinkedIn', icon: Linkedin, color: '#0077b5' },
+  { value: 'POST_INSTAGRAM', label: 'Post to Instagram', icon: Instagram, color: '#e1306c' },
   { value: 'SCHEDULE_POST', label: 'Schedule Post', icon: CalendarClock, color: '#fbbc04' },
   { value: 'CREATE_ZOOM_MEETING', label: 'Create Zoom Meeting', icon: Video, color: '#2d8cff' },
   { value: 'API_REQUEST', label: 'API Request', icon: Send, color: '#8b5cf6' },
@@ -182,11 +182,11 @@ function ActionConfigFields({ action, onChange, formFields }) {
           )}
         </div>
       );
-    case 'POST_LINKEDIN':
+    case 'POST_INSTAGRAM':
       return (
         <div className="action-config">
           <div className="form-group">
-            <label>Post Content Template</label>
+            <label>Caption Template</label>
             <textarea
               placeholder="Use {{name}}, {{email}}, etc. for dynamic values"
               value={action.config?.contentTemplate || ''}
@@ -201,14 +201,14 @@ function ActionConfigFields({ action, onChange, formFields }) {
             )}
           </div>
           <div className="form-group">
-            <label>Visibility</label>
-            <select
-              value={action.config?.visibility || 'PUBLIC'}
-              onChange={(e) => updateConfig('visibility', e.target.value)}
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="CONNECTIONS">Connections Only</option>
-            </select>
+            <label>Media URL</label>
+            <input
+              type="text"
+              placeholder="https://example.com/image.jpg"
+              value={action.config?.mediaUrl || ''}
+              onChange={(e) => updateConfig('mediaUrl', e.target.value)}
+            />
+            <span className="form-hint">Instagram requires an image or video URL to publish a post.</span>
           </div>
         </div>
       );
@@ -219,10 +219,10 @@ function ActionConfigFields({ action, onChange, formFields }) {
             <div className="form-group">
               <label>Platform</label>
               <select
-                value={action.config?.platform || 'linkedin'}
+                value={action.config?.platform || 'instagram'}
                 onChange={(e) => updateConfig('platform', e.target.value)}
               >
-                <option value="linkedin">LinkedIn</option>
+                <option value="instagram">Instagram</option>
                 <option value="twitter">Twitter</option>
                 <option value="facebook">Facebook</option>
                 <option value="instagram">Instagram</option>

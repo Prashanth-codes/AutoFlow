@@ -59,6 +59,22 @@ export const logsAPI = {
   getById: (logId) => api.get(`/api/webhook/logs/${logId}`),
 };
 
+// ─── Instagram OAuth ─────────────────────────────
+export const instagramAPI = {
+  getStatus: () => api.get('/api/instagram-oauth/status'),
+  disconnect: () => api.delete('/api/instagram-oauth/disconnect'),
+};
+
+// ─── Comment Rules (Instagram Automation) ────────
+export const commentRuleAPI = {
+  getAll: () => api.get('/api/comment-rules'),
+  getById: (id) => api.get(`/api/comment-rules/${id}`),
+  create: (data) => api.post('/api/comment-rules', data),
+  update: (id, data) => api.put(`/api/comment-rules/${id}`, data),
+  delete: (id) => api.delete(`/api/comment-rules/${id}`),
+  toggle: (id) => api.patch(`/api/comment-rules/${id}/toggle`),
+};
+
 // ─── Health ──────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/api/health'),
