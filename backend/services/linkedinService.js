@@ -1,44 +1,67 @@
 const axios = require('axios');
+const https = require('https');
+const LinkedInAccount = require('../models/LinkedInAccount');
+
+// Force IPv4 to avoid ETIMEDOUT when Node tries IPv6 first
+const httpsAgent = new https.Agent({ family: 4 });
 
 class LinkedInService {
   constructor() {
-    this.accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
     this.apiUrl = 'https://api.linkedin.com/v2';
   }
 
-  async postToLinkedIn(content, mediaUrl = null) {
+  /**
+   * Post text content to LinkedIn on behalf of a user.
+   * @param {string} content - The text to post
+   * @param {string|null} mediaUrl - (unused for now, placeholder)
+   * @param {string|null} appUserId - The app user whose LinkedIn token to use.
+   *        When called from a workflow the userId should be supplied.
+   *        Falls back to the first stored account for backwards compat.
+   */
+  async postToLinkedIn(content, mediaUrl = null, appUserId = null) {
     try {
-      if (!this.accessToken) {
-        throw new Error('LinkedIn access token not configured');
+      // Look up the stored OAuth token
+      const query = appUserId ? { appUserId } : {};
+      const account = await LinkedInAccount.findOne(query).sort({ updatedAt: -1 });
+
+      if (!account) {
+        throw new Error('No LinkedIn account connected. Please connect via OAuth first.');
       }
 
-      // Mock implementation - replace with actual LinkedIn API call
       const payload = {
-        content,
-        mediaUrl,
-        postedAt: new Date(),
+        author: account.memberUrn,
+        lifecycleState: 'PUBLISHED',
+        specificContent: {
+          'com.linkedin.ugc.ShareContent': {
+            shareCommentary: { text: content },
+            shareMediaCategory: 'NONE',
+          },
+        },
+        visibility: {
+          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
+        },
       };
 
-      console.log('Posting to LinkedIn:', payload);
+      const response = await axios.post(`${this.apiUrl}/ugcPosts`, payload, {
+        headers: {
+          Authorization: `Bearer ${account.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+        httpsAgent,
+        timeout: 15000,
+      });
 
-      // Actual API call would look like:
-      // const response = await axios.post(`${this.apiUrl}/ugcPosts`, {
-      //   ...payload
-      // }, {
-      //   headers: {
-      //     'Authorization': `Bearer ${this.accessToken}`,
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
+      console.log('✅ LinkedIn post created:', response.data.id);
 
       return {
         success: true,
         message: 'Posted to LinkedIn successfully',
-        postId: `linkedin_${Date.now()}`,
+        postId: response.data.id,
         content,
       };
     } catch (error) {
-      console.error('LinkedIn posting error:', error);
+      console.error('LinkedIn posting error:', error.response?.data || error.message);
       throw error;
     }
   }

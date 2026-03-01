@@ -16,4 +16,7 @@ router.delete('/:id', workflowController.deleteWorkflow);
 // Webhook URL
 router.get('/:id/webhook-url', workflowController.getWebhookUrl);
 
+// Schedule a SCHEDULED_POST workflow
+router.post('/:id/schedule', workflowController.scheduleWorkflowPost);
+
 module.exports = router;

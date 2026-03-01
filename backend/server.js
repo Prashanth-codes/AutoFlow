@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const zoomRoutes = require('./routes/zoomRoutes');
+const linkedinRoutes = require('./routes/linkedinRoutes');
 const scheduler = require('./services/scheduler');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/workflows', workflowRoutes);
 app.use('/api/webhook', webhookRoutes);
 app.use('/api/zoom', zoomRoutes);
+app.use('/api', linkedinRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

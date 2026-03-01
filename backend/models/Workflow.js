@@ -29,6 +29,7 @@ const workflowSchema = new mongoose.Schema(
         'SOCIAL_EVENT',
         'ZOOM_EVENT',
         'ECOMMERCE_ORDER',
+        'SCHEDULED_POST',
       ],
       required: [true, 'Please provide a trigger type'],
     },
@@ -72,6 +73,13 @@ const workflowSchema = new mongoose.Schema(
         sendEmailInvite: { type: Boolean, default: true },
         storeInDatabase: { type: Boolean, default: true },
         fetchTranscript: { type: Boolean, default: true },
+      },
+      // Scheduled Post trigger configuration
+      scheduledPostConfig: {
+        platform: { type: String, enum: ['linkedin', 'twitter', 'facebook', 'instagram'], default: 'linkedin' },
+        content: { type: String, default: '' },
+        scheduledFor: { type: Date },
+        notifyEmail: { type: String, default: '' },
       },
     },
     actions: [

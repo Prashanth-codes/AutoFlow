@@ -42,22 +42,12 @@ exports.handleWebhook = async (req, res) => {
       payload = flattened;
     }
 
-    // For ZOOM_EVENT triggers, inject meeting config from workflow triggerConfig
-    if (workflow.triggerType === 'ZOOM_EVENT' && workflow.triggerConfig?.zoomConfig) {
-      const zc = workflow.triggerConfig.zoomConfig;
-      payload = {
-        ...payload,
-        meetingTopic: payload.meetingTopic || zc.meetingTopic || 'Zoom Meeting',
-        duration: payload.duration || zc.meetingDuration || 60,
-        agenda: payload.agenda || zc.meetingAgenda || '',
-        password: payload.password || zc.meetingPassword || '',
-        timezone: payload.timezone || zc.timezone || 'UTC',
-        autoRecording: payload.autoRecording || zc.autoRecording || 'cloud',
-        attendees: payload.attendees || zc.attendees || [],
-        sendEmailInvite: zc.sendEmailInvite !== false,
-        storeInDatabase: zc.storeInDatabase !== false,
-        fetchTranscript: zc.fetchTranscript !== false,
-      };
+    // For ZOOM_EVENT triggers, all meeting config is in the CREATE_ZOOM_MEETING action.
+    // The webhook payload is passed through as-is to the action executor.
+
+    // Ensure payload is always a valid object (empty curl body can result in undefined)
+    if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
+      payload = { _trigger: workflow.triggerType, _triggeredAt: new Date().toISOString() };
     }
 
     // Validate form fields for triggers with form fields

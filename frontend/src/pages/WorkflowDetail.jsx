@@ -185,16 +185,7 @@ export default function WorkflowDetail() {
                     <span className="info-value">{workflow.triggerConfig.formFields.length} fields defined</span>
                   </div>
                 )}
-              {workflow.triggerType === 'ZOOM_EVENT' && workflow.triggerConfig?.zoomConfig && (
-                <div className="info-row">
-                  <span className="info-label">Zoom Config</span>
-                  <span className="info-value">
-                    {workflow.triggerConfig.zoomConfig.meetingTopic || 'Default'} •{' '}
-                    {workflow.triggerConfig.zoomConfig.meetingDuration || 60}min •{' '}
-                    {workflow.triggerConfig.zoomConfig.attendees?.length || 0} attendee(s)
-                  </span>
-                </div>
-              )}
+
               <div className="info-row">
                 <span className="info-label">Actions</span>
                 <span className="info-value">{workflow.actions?.length || 0} step{(workflow.actions?.length || 0) !== 1 && 's'}</span>
@@ -291,66 +282,7 @@ export default function WorkflowDetail() {
           </div>
         )}
 
-      {/* Zoom Configuration Detail */}
-      {workflow.triggerType === 'ZOOM_EVENT' && workflow.triggerConfig?.zoomConfig && (
-        <div className="card" style={{ marginTop: '1.5rem' }}>
-          <div className="card-header">
-            <h3 className="card-title">
-              <Video size={18} style={{ marginRight: 6 }} /> Zoom Configuration
-            </h3>
-          </div>
-          <div className="card-body">
-            <div className="info-list">
-              <div className="info-row">
-                <span className="info-label">Meeting Topic</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.meetingTopic || '—'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Duration</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.meetingDuration || 60} minutes</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Timezone</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.timezone || 'UTC'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Auto Recording</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.autoRecording || 'cloud'}</span>
-              </div>
-              {workflow.triggerConfig.zoomConfig.meetingAgenda && (
-                <div className="info-row">
-                  <span className="info-label">Agenda</span>
-                  <span className="info-value">{workflow.triggerConfig.zoomConfig.meetingAgenda}</span>
-                </div>
-              )}
-              <div className="info-row">
-                <span className="info-label">Email Invites</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.sendEmailInvite !== false ? '✓ Enabled' : 'Disabled'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Store in Database</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.storeInDatabase !== false ? '✓ Enabled' : 'Disabled'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Fetch Transcript</span>
-                <span className="info-value">{workflow.triggerConfig.zoomConfig.fetchTranscript !== false ? '✓ Enabled' : 'Disabled'}</span>
-              </div>
-              {workflow.triggerConfig.zoomConfig.attendees?.length > 0 && (
-                <div className="info-row">
-                  <span className="info-label">Attendees</span>
-                  <span className="info-value">
-                    {workflow.triggerConfig.zoomConfig.attendees.map((a, i) => (
-                      <span key={i} className="chip chip-muted" style={{ marginRight: 4, marginBottom: 4 }}>
-                        {a.name ? `${a.name} (${a.email})` : a.email}
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Zoom Meetings History */}
       {workflow.triggerType === 'ZOOM_EVENT' && (

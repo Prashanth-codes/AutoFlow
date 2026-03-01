@@ -51,6 +51,7 @@ export const workflowAPI = {
   update: (id, data) => api.put(`/api/workflows/${id}`, data),
   delete: (id) => api.delete(`/api/workflows/${id}`),
   getWebhookUrl: (id) => api.get(`/api/workflows/${id}/webhook-url`),
+  schedulePost: (id) => api.post(`/api/workflows/${id}/schedule`),
 };
 
 // ─── Execution Logs ──────────────────────────────
@@ -68,6 +69,13 @@ export const zoomAPI = {
 // ─── Health ──────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/api/health'),
+};
+
+// ─── LinkedIn ────────────────────────────────────
+export const linkedinAPI = {
+  getStatus: () => api.get('/api/linkedin/status'),
+  disconnect: () => api.delete('/api/linkedin/disconnect'),
+  testPost: (text) => api.post('/api/linkedin/test-post', { text }),
 };
 
 export default api;

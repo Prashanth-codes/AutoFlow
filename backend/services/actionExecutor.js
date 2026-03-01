@@ -372,12 +372,7 @@ class ActionExecutor {
       attendees = configAttendees;
     }
 
-    // 2. Fall back to workflow zoom trigger config
-    if (attendees.length === 0 && workflow.triggerConfig?.zoomConfig?.attendees?.length > 0) {
-      attendees = workflow.triggerConfig.zoomConfig.attendees;
-    }
-
-    // 3. Fall back to payload attendees or single email from payload
+    // 2. Fall back to payload attendees or single email from payload
     if (attendees.length === 0) {
       if (payload.attendees && Array.isArray(payload.attendees)) {
         attendees = payload.attendees;
@@ -415,6 +410,7 @@ class ActionExecutor {
       const emailRecipients = attendees.map((a) => a.email).filter(Boolean);
 
       if (emailRecipients.length > 0) {
+        console.log(`📧 Sending Zoom invite emails to ${emailRecipients.length} recipient(s): ${emailRecipients.join(', ')}`);
         const subject = `📹 Zoom Meeting Invite: ${resolvedTopic}`;
         const html = this._generateZoomInviteEmail({
           topic: resolvedTopic,
@@ -431,12 +427,31 @@ class ActionExecutor {
           results.emailsSent = emailRecipients.map((email, i) => ({
             email,
             status: emailResults[i]?.status || 'fulfilled',
+            error: emailResults[i]?.status === 'rejected' ? emailResults[i]?.reason?.message : undefined,
           }));
+          const failedEmails = results.emailsSent.filter(e => e.status === 'rejected');
+          if (failedEmails.length > 0) {
+            console.error(`❌ ${failedEmails.length} email(s) failed:`, failedEmails);
+          } else {
+            console.log(`✅ All ${emailRecipients.length} Zoom invite email(s) sent successfully`);
+          }
         } catch (emailError) {
-          console.error('Error sending Zoom invite emails:', emailError.message);
+          console.error('❌ Error sending Zoom invite emails:', emailError.message);
           results.emailsSent = [{ error: emailError.message }];
         }
+      } else {
+        console.warn('⚠️ Attendees exist but none have valid email addresses');
+        results.emailsSent = [];
+        results.emailWarning = 'Attendees configured but no valid email addresses found';
       }
+    } else if (sendEmailInvite === false) {
+      console.log('ℹ️ Email invites disabled for this workflow');
+      results.emailsSent = [];
+      results.emailWarning = 'Email invites are disabled in config';
+    } else {
+      console.warn('⚠️ No attendees configured — no Zoom invite emails will be sent');
+      results.emailsSent = [];
+      results.emailWarning = 'No attendees configured. Add attendees in the workflow trigger config or CREATE_ZOOM_MEETING action to send invite emails.';
     }
 
     // Store meeting metadata in the database

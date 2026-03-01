@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Plug,
   Linkedin,
@@ -10,9 +11,12 @@ import {
   CheckCircle2,
   XCircle,
   ExternalLink,
+  Send,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { linkedinAPI } from '../services/api';
 
 const INTEGRATIONS = [
   {
@@ -21,7 +25,8 @@ const INTEGRATIONS = [
     desc: 'Post updates and share content to LinkedIn automatically',
     icon: Linkedin,
     color: '#0077b5',
-    fields: [{ key: 'accessToken', label: 'Access Token', type: 'password' }],
+    oauth: true, // uses OAuth flow — no manual fields
+    fields: [],
   },
   {
     id: 'zoom',
@@ -70,11 +75,46 @@ const INTEGRATIONS = [
 ];
 
 export default function Connections() {
+  const { user } = useAuth();
   const [connected, setConnected] = useState({});
   const [showModal, setShowModal] = useState(null);
   const [formData, setFormData] = useState({});
+  const [searchParams] = useSearchParams();
+  const [testPostText, setTestPostText] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  // ── On mount: check LinkedIn connection status & query-param toast ──
+  useEffect(() => {
+    checkLinkedInStatus();
+
+    const linkedinParam = searchParams.get('linkedin');
+    if (linkedinParam === 'connected') {
+      toast.success('LinkedIn connected successfully!');
+      setConnected((prev) => ({ ...prev, linkedin: true }));
+    } else if (linkedinParam === 'error') {
+      toast.error('LinkedIn connection failed. Please try again.');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const checkLinkedInStatus = async () => {
+    try {
+      const { data } = await linkedinAPI.getStatus();
+      if (data.connected) {
+        setConnected((prev) => ({ ...prev, linkedin: true }));
+      }
+    } catch {
+      // not connected or not logged in
+    }
+  };
 
   const handleConnect = (integration) => {
+    // LinkedIn uses OAuth redirect
+    if (integration.oauth) {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      window.location.href = `${backendUrl}/api/auth/linkedin?token=${token}&returnTo=${encodeURIComponent('/connections')}`;
+      return;
+    }
     setShowModal(integration);
     setFormData({});
   };
@@ -92,9 +132,33 @@ export default function Connections() {
     toast.success(`${integration.name} connected!`);
   };
 
-  const handleDisconnect = (integrationId) => {
+  const handleDisconnect = async (integrationId) => {
+    if (integrationId === 'linkedin') {
+      try {
+        await linkedinAPI.disconnect();
+      } catch {
+        // ignore
+      }
+    }
     setConnected((prev) => ({ ...prev, [integrationId]: false }));
     toast.success('Disconnected');
+  };
+
+  const handleTestPost = async () => {
+    if (!testPostText.trim()) {
+      toast.error('Enter some text to post');
+      return;
+    }
+    setPosting(true);
+    try {
+      const { data } = await linkedinAPI.testPost(testPostText);
+      toast.success(data.message || 'Posted!');
+      setTestPostText('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Post failed');
+    } finally {
+      setPosting(false);
+    }
   };
 
   return (
@@ -132,12 +196,44 @@ export default function Connections() {
               <p className="connection-desc">{integration.desc}</p>
               <div className="connection-card-bottom">
                 {isConnected ? (
-                  <button
-                    className="btn btn-outline btn-sm btn-full"
-                    onClick={() => handleDisconnect(integration.id)}
-                  >
-                    <XCircle size={14} /> Disconnect
-                  </button>
+                  <>
+                    <button
+                      className="btn btn-outline btn-sm btn-full"
+                      onClick={() => handleDisconnect(integration.id)}
+                    >
+                      <XCircle size={14} /> Disconnect
+                    </button>
+
+                    {/* LinkedIn test-post mini form */}
+                    {integration.id === 'linkedin' && (
+                      <div style={{ marginTop: 8, width: '100%' }}>
+                        <textarea
+                          rows={2}
+                          placeholder="Write a test post…"
+                          value={testPostText}
+                          onChange={(e) => setTestPostText(e.target.value)}
+                          style={{
+                            width: '100%',
+                            borderRadius: 6,
+                            border: '1px solid #334155',
+                            padding: '6px 8px',
+                            fontSize: 13,
+                            background: '#0f172a',
+                            color: '#f1f5f9',
+                            resize: 'vertical',
+                          }}
+                        />
+                        <button
+                          className="btn btn-primary btn-sm btn-full"
+                          style={{ marginTop: 6 }}
+                          onClick={handleTestPost}
+                          disabled={posting}
+                        >
+                          <Send size={14} /> {posting ? 'Posting…' : 'Test Post'}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <button
                     className="btn btn-primary btn-sm btn-full"

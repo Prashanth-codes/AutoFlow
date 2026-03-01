@@ -25,6 +25,7 @@ const TRIGGER_TYPES = [
   { value: 'SOCIAL_EVENT', label: 'Social Event', desc: 'Triggered by social media events' },
   { value: 'ZOOM_EVENT', label: 'Zoom Event', desc: 'Triggered by Zoom meeting events' },
   { value: 'ECOMMERCE_ORDER', label: 'E-commerce Order', desc: 'Triggered when an order is placed' },
+  { value: 'SCHEDULED_POST', label: 'Scheduled Post', desc: 'Schedule a post to social media at a specific time' },
 ];
 
 const ACTION_TYPES = [
@@ -597,18 +598,13 @@ export default function WorkflowEdit() {
       triggerConfig: {
         ...prev.triggerConfig,
         formFields: (triggerType === 'GOOGLE_FORM' || triggerType === 'ECOMMERCE_ORDER') ? prev.triggerConfig.formFields : [],
-        zoomConfig: triggerType === 'ZOOM_EVENT' ? (prev.triggerConfig.zoomConfig || {
-          meetingTopic: '',
-          meetingDuration: 60,
-          meetingAgenda: '',
-          meetingPassword: '',
-          timezone: 'UTC',
-          autoRecording: 'cloud',
-          attendees: [],
-          sendEmailInvite: true,
-          storeInDatabase: true,
-          fetchTranscript: true,
-        }) : prev.triggerConfig.zoomConfig,
+        zoomConfig: prev.triggerConfig.zoomConfig,
+        scheduledPostConfig: triggerType === 'SCHEDULED_POST' ? (prev.triggerConfig.scheduledPostConfig || {
+          platform: 'linkedin',
+          content: '',
+          scheduledFor: '',
+          notifyEmail: '',
+        }) : prev.triggerConfig.scheduledPostConfig,
       },
     }));
   };
@@ -667,7 +663,7 @@ export default function WorkflowEdit() {
         name: form.name,
         description: form.description,
         triggerType: form.triggerType,
-        triggerConfig: (form.triggerType === 'GOOGLE_FORM' || form.triggerType === 'ECOMMERCE_ORDER' || form.triggerType === 'ZOOM_EVENT') ? form.triggerConfig : undefined,
+        triggerConfig: (form.triggerType === 'GOOGLE_FORM' || form.triggerType === 'ECOMMERCE_ORDER' || form.triggerType === 'SCHEDULED_POST') ? form.triggerConfig : undefined,
         actions: form.actions,
       };
       await workflowAPI.update(id, payload);
@@ -858,287 +854,127 @@ export default function WorkflowEdit() {
           </div>
         )}
 
-        {/* Zoom Event Trigger Configuration */}
+        {/* Zoom Event Trigger — configuration is done in the CREATE_ZOOM_MEETING action */}
         {form.triggerType === 'ZOOM_EVENT' && (
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">
                 <Video size={18} style={{ marginRight: 6 }} />
-                Zoom Meeting Configuration
+                Zoom Event Trigger
+              </h3>
+            </div>
+            <div className="card-body">
+              <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>
+                This workflow will be triggered via its webhook URL. Add a <strong>Create Zoom Meeting</strong> action below to configure meeting details, attendees, and email invites.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled Post Trigger Configuration */}
+        {form.triggerType === 'SCHEDULED_POST' && (
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <CalendarClock size={18} style={{ marginRight: 6 }} />
+                Scheduled Post Configuration
               </h3>
               <span className="card-header-hint">
-                Configure the Zoom meeting that will be created when this workflow triggers
+                Configure your social media post and when it should be published
               </span>
             </div>
             <div className="card-body">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Meeting Topic *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Weekly Team Standup"
-                    value={form.triggerConfig.zoomConfig?.meetingTopic || ''}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        triggerConfig: {
-                          ...prev.triggerConfig,
-                          zoomConfig: { ...prev.triggerConfig.zoomConfig, meetingTopic: e.target.value },
-                        },
-                      }))
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Duration (minutes)</label>
-                  <input
-                    type="number"
-                    min={15}
-                    placeholder="60"
-                    value={form.triggerConfig.zoomConfig?.meetingDuration || 60}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        triggerConfig: {
-                          ...prev.triggerConfig,
-                          zoomConfig: { ...prev.triggerConfig.zoomConfig, meetingDuration: parseInt(e.target.value) || 60 },
-                        },
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
               <div className="form-group">
-                <label>Meeting Agenda</label>
-                <textarea
-                  placeholder="Describe the meeting agenda..."
-                  value={form.triggerConfig.zoomConfig?.meetingAgenda || ''}
+                <label>Platform</label>
+                <select
+                  value={form.triggerConfig.scheduledPostConfig?.platform || 'linkedin'}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
                       triggerConfig: {
                         ...prev.triggerConfig,
-                        zoomConfig: { ...prev.triggerConfig.zoomConfig, meetingAgenda: e.target.value },
+                        scheduledPostConfig: { ...prev.triggerConfig.scheduledPostConfig, platform: e.target.value },
                       },
                     }))
                   }
-                  rows={3}
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Timezone</label>
-                  <select
-                    value={form.triggerConfig.zoomConfig?.timezone || 'UTC'}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        triggerConfig: {
-                          ...prev.triggerConfig,
-                          zoomConfig: { ...prev.triggerConfig.zoomConfig, timezone: e.target.value },
-                        },
-                      }))
-                    }
-                  >
-                    <option value="UTC">UTC</option>
-                    <option value="America/New_York">Eastern Time</option>
-                    <option value="America/Chicago">Central Time</option>
-                    <option value="America/Denver">Mountain Time</option>
-                    <option value="America/Los_Angeles">Pacific Time</option>
-                    <option value="Europe/London">London</option>
-                    <option value="Europe/Berlin">Berlin</option>
-                    <option value="Asia/Kolkata">India (IST)</option>
-                    <option value="Asia/Tokyo">Tokyo</option>
-                    <option value="Australia/Sydney">Sydney</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Auto Recording</label>
-                  <select
-                    value={form.triggerConfig.zoomConfig?.autoRecording || 'cloud'}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        triggerConfig: {
-                          ...prev.triggerConfig,
-                          zoomConfig: { ...prev.triggerConfig.zoomConfig, autoRecording: e.target.value },
-                        },
-                      }))
-                    }
-                  >
-                    <option value="cloud">Cloud (required for transcripts)</option>
-                    <option value="local">Local</option>
-                    <option value="none">None</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Meeting Password</label>
-                <input
-                  type="text"
-                  placeholder="Optional password"
-                  value={form.triggerConfig.zoomConfig?.meetingPassword || ''}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      triggerConfig: {
-                        ...prev.triggerConfig,
-                        zoomConfig: { ...prev.triggerConfig.zoomConfig, meetingPassword: e.target.value },
-                      },
-                    }))
-                  }
-                />
-              </div>
-
-              {/* Attendees */}
-              <div className="form-group">
-                <label>Attendees</label>
-                <span className="form-hint" style={{ marginBottom: 8, display: 'block' }}>
-                  Add participants who will receive the meeting invite via email
-                </span>
-                {(form.triggerConfig.zoomConfig?.attendees || []).length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-                    {form.triggerConfig.zoomConfig.attendees.map((att, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          placeholder="Name"
-                          value={att.name || ''}
-                          onChange={(e) => {
-                            const updated = [...form.triggerConfig.zoomConfig.attendees];
-                            updated[idx] = { ...updated[idx], name: e.target.value };
-                            setForm((prev) => ({
-                              ...prev,
-                              triggerConfig: {
-                                ...prev.triggerConfig,
-                                zoomConfig: { ...prev.triggerConfig.zoomConfig, attendees: updated },
-                              },
-                            }));
-                          }}
-                          style={{ flex: 1 }}
-                        />
-                        <input
-                          type="email"
-                          placeholder="email@example.com"
-                          value={att.email || ''}
-                          onChange={(e) => {
-                            const updated = [...form.triggerConfig.zoomConfig.attendees];
-                            updated[idx] = { ...updated[idx], email: e.target.value };
-                            setForm((prev) => ({
-                              ...prev,
-                              triggerConfig: {
-                                ...prev.triggerConfig,
-                                zoomConfig: { ...prev.triggerConfig.zoomConfig, attendees: updated },
-                              },
-                            }));
-                          }}
-                          style={{ flex: 1 }}
-                        />
-                        <button
-                          type="button"
-                          className="btn-icon btn-icon-danger"
-                          onClick={() => {
-                            const updated = form.triggerConfig.zoomConfig.attendees.filter((_, i) => i !== idx);
-                            setForm((prev) => ({
-                              ...prev,
-                              triggerConfig: {
-                                ...prev.triggerConfig,
-                                zoomConfig: { ...prev.triggerConfig.zoomConfig, attendees: updated },
-                              },
-                            }));
-                          }}
-                          title="Remove attendee"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => {
-                    setForm((prev) => ({
-                      ...prev,
-                      triggerConfig: {
-                        ...prev.triggerConfig,
-                        zoomConfig: {
-                          ...prev.triggerConfig.zoomConfig,
-                          attendees: [...(prev.triggerConfig.zoomConfig?.attendees || []), { name: '', email: '' }],
-                        },
-                      },
-                    }));
-                  }}
-                  style={{ marginTop: 4 }}
                 >
-                  <Plus size={14} /> Add Attendee
-                </button>
+                  <option value="linkedin">🔗 LinkedIn</option>
+                  <option value="twitter" disabled>🐦 Twitter (coming soon)</option>
+                  <option value="facebook" disabled>📘 Facebook (coming soon)</option>
+                  <option value="instagram" disabled>📷 Instagram (coming soon)</option>
+                </select>
               </div>
 
-              {/* Feature toggles */}
-              <div className="form-row" style={{ marginTop: 16 }}>
+              <div className="form-group">
+                <label>Post Content *</label>
+                <textarea
+                  placeholder="Write your LinkedIn post here..."
+                  value={form.triggerConfig.scheduledPostConfig?.content || ''}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      triggerConfig: {
+                        ...prev.triggerConfig,
+                        scheduledPostConfig: { ...prev.triggerConfig.scheduledPostConfig, content: e.target.value },
+                      },
+                    }))
+                  }
+                  rows={5}
+                  style={{ resize: 'vertical' }}
+                />
+                <span className="form-hint">
+                  {(form.triggerConfig.scheduledPostConfig?.content || '').length} characters
+                </span>
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={form.triggerConfig.zoomConfig?.sendEmailInvite ?? true}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          triggerConfig: {
-                            ...prev.triggerConfig,
-                            zoomConfig: { ...prev.triggerConfig.zoomConfig, sendEmailInvite: e.target.checked },
-                          },
-                        }))
-                      }
-                    />
-                    <span>Send Email Invites</span>
-                  </label>
-                  <span className="form-hint">Email meeting URL to attendees</span>
+                  <label>Schedule Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    value={form.triggerConfig.scheduledPostConfig?.scheduledFor || ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        triggerConfig: {
+                          ...prev.triggerConfig,
+                          scheduledPostConfig: { ...prev.triggerConfig.scheduledPostConfig, scheduledFor: e.target.value },
+                        },
+                      }))
+                    }
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  <span className="form-hint">The post will be published at this time</span>
                 </div>
                 <div className="form-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={form.triggerConfig.zoomConfig?.storeInDatabase ?? true}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          triggerConfig: {
-                            ...prev.triggerConfig,
-                            zoomConfig: { ...prev.triggerConfig.zoomConfig, storeInDatabase: e.target.checked },
-                          },
-                        }))
-                      }
-                    />
-                    <span>Store Metadata in DB</span>
-                  </label>
-                  <span className="form-hint">Save meeting details to database</span>
-                </div>
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={form.triggerConfig.zoomConfig?.fetchTranscript ?? true}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          triggerConfig: {
-                            ...prev.triggerConfig,
-                            zoomConfig: { ...prev.triggerConfig.zoomConfig, fetchTranscript: e.target.checked },
-                          },
-                        }))
-                      }
-                    />
-                    <span>Fetch Transcript</span>
-                  </label>
-                  <span className="form-hint">Auto-capture transcript when meeting ends</span>
+                  <label>Notification Email</label>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={form.triggerConfig.scheduledPostConfig?.notifyEmail || ''}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        triggerConfig: {
+                          ...prev.triggerConfig,
+                          scheduledPostConfig: { ...prev.triggerConfig.scheduledPostConfig, notifyEmail: e.target.value },
+                        },
+                      }))
+                    }
+                  />
+                  <span className="form-hint">Get notified when the post is published (add Send Email action below)</span>
                 </div>
               </div>
+
+              {form.triggerConfig.scheduledPostConfig?.content && form.triggerConfig.scheduledPostConfig?.scheduledFor && (
+                <div className="form-hint-box" style={{ marginTop: 12, background: '#0077b515', borderColor: '#0077b533' }}>
+                  <Linkedin size={16} style={{ color: '#0077b5' }} />
+                  <span>
+                    Your post will be published to <strong>LinkedIn</strong> on{' '}
+                    <strong>{new Date(form.triggerConfig.scheduledPostConfig.scheduledFor).toLocaleString()}</strong>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}

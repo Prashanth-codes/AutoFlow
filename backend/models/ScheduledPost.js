@@ -12,6 +12,10 @@ const scheduledPostSchema = new mongoose.Schema(
       ref: 'Organization',
       required: true,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     platform: {
       type: String,
       enum: ['linkedin', 'twitter', 'facebook', 'instagram'],

@@ -1,6 +1,7 @@
 const Workflow = require('../models/Workflow');
 const Organization = require('../models/Organization');
 const generateWebhookId = require('../utils/generateWebhookId');
+const scheduler = require('../services/scheduler');
 
 // Create Workflow
 exports.createWorkflow = async (req, res) => {
@@ -16,6 +17,7 @@ exports.createWorkflow = async (req, res) => {
       'SOCIAL_EVENT',
       'ZOOM_EVENT',
       'ECOMMERCE_ORDER',
+      'SCHEDULED_POST',
     ];
     if (!validTriggers.includes(triggerType)) {
       return res.status(400).json({
@@ -43,7 +45,7 @@ exports.createWorkflow = async (req, res) => {
       createdBy: userId,
       triggerType,
       webhookId,
-      triggerConfig: (triggerType === 'GOOGLE_FORM' || triggerType === 'ECOMMERCE_ORDER' || triggerType === 'ZOOM_EVENT') && triggerConfig ? triggerConfig : undefined,
+      triggerConfig: (triggerType === 'GOOGLE_FORM' || triggerType === 'ECOMMERCE_ORDER' || triggerType === 'ZOOM_EVENT' || triggerType === 'SCHEDULED_POST') && triggerConfig ? triggerConfig : undefined,
       actions: actions.map((action, index) => ({
         ...action,
         fieldMappings: action.fieldMappings || {},
@@ -146,6 +148,7 @@ exports.updateWorkflow = async (req, res) => {
         'SOCIAL_EVENT',
         'ZOOM_EVENT',
         'ECOMMERCE_ORDER',
+        'SCHEDULED_POST',
       ];
       if (!validTriggers.includes(triggerType)) {
         return res.status(400).json({
@@ -259,6 +262,56 @@ exports.getWebhookUrl = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching webhook URL',
+      error: error.message,
+    });
+  }
+};
+
+// Schedule a SCHEDULED_POST workflow
+exports.scheduleWorkflowPost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { organizationId, userId } = req.user;
+
+    const workflow = await Workflow.findOne({ _id: id, organizationId });
+
+    if (!workflow) {
+      return res.status(404).json({ success: false, message: 'Workflow not found' });
+    }
+
+    if (workflow.triggerType !== 'SCHEDULED_POST') {
+      return res.status(400).json({ success: false, message: 'Workflow is not a Scheduled Post trigger' });
+    }
+
+    const config = workflow.triggerConfig?.scheduledPostConfig;
+    if (!config || !config.content || !config.scheduledFor) {
+      return res.status(400).json({ success: false, message: 'Missing scheduled post configuration (content, scheduledFor)' });
+    }
+
+    // Create scheduled post via the scheduler
+    const result = await scheduler.schedulePost(
+      workflow,
+      config.platform || 'linkedin',
+      config.content,
+      new Date(config.scheduledFor),
+      null, // mediaUrl
+      userId // pass the userId so LinkedIn service can look up the right account
+    );
+
+    // Increment execution count
+    workflow.executionCount += 1;
+    await workflow.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Post scheduled for ${new Date(config.scheduledFor).toLocaleString()}`,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Schedule workflow post error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error scheduling post',
       error: error.message,
     });
   }

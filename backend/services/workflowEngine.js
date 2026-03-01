@@ -51,12 +51,15 @@ class WorkflowEngine {
       console.error('Workflow execution failed:', error);
 
       // Update log with fatal error
-      const executionLog = await ExecutionLog.findById(executionLogId);
-      executionLog.status = 'failed';
-      executionLog.error = error.message;
-      executionLog.completedAt = new Date();
-      executionLog.duration = Date.now() - executionLog.startedAt;
-      await executionLog.save();
+      try {
+        await ExecutionLog.findByIdAndUpdate(executionLogId, {
+          status: 'failed',
+          error: error.message,
+          completedAt: new Date(),
+        });
+      } catch (logError) {
+        console.error('Failed to update execution log:', logError.message);
+      }
 
       throw error;
     }
