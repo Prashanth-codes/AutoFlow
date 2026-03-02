@@ -4,17 +4,19 @@ const Organization = require('../models/Organization');
 const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
+  // Without transaction, org may be created but user creation fails, you get broken data. 
+  // With transaction, if any step fails, everything rolls back and you get clean data.
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { name, email, password, organizationName } = req.body;
 
-    // Check if user exists
+    // Check if user exists, because no user with 2 orgs not allowed.
     let user = await User.findOne({ email });
     if (user) {
-      await session.abortTransaction();
-      session.endSession();
+      await session.abortTransaction(); //cancel transaction if user already exists
+      session.endSession(); // close session
       return res.status(400).json({
         success: false,
         message: 'User already exists',
@@ -22,6 +24,8 @@ exports.register = async (req, res) => {
     }
 
     // Create organization (within transaction)
+    // Inside transaction, you must pass an array to create, owner is null, because user not yet created.
+    // every registration = new organisation.
     const [organization] = await Organization.create(
       [
         {
@@ -34,6 +38,7 @@ exports.register = async (req, res) => {
     );
 
     // Create user (within transaction)
+    // first registered user becomes-> role = admin, and organization owner. Subsequent users invited by admin will be role = member.
     [user] = await User.create(
       [
         {
@@ -48,6 +53,7 @@ exports.register = async (req, res) => {
     );
 
     // Update organization owner
+
     organization.owner = user._id;
     organization.members.push(user._id);
     await organization.save({ session });

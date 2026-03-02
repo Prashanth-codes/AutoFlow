@@ -52,6 +52,7 @@ export const workflowAPI = {
   delete: (id) => api.delete(`/api/workflows/${id}`),
   getWebhookUrl: (id) => api.get(`/api/workflows/${id}/webhook-url`),
   schedulePost: (id) => api.post(`/api/workflows/${id}/schedule`),
+  trigger: (id, payload = {}) => api.post(`/api/workflows/${id}/trigger`, payload),
 };
 
 // ─── Execution Logs ──────────────────────────────

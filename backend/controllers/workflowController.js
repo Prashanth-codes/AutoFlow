@@ -9,6 +9,8 @@ exports.createWorkflow = async (req, res) => {
     const { name, description, triggerType, triggerConfig, actions } = req.body;
     const { organizationId } = req.user;
     const { userId } = req.user;
+    //org id, userid comes from the jwt.
+
 
     // Validate trigger type
     const validTriggers = [
@@ -38,6 +40,7 @@ exports.createWorkflow = async (req, res) => {
     const webhookId = generateWebhookId();
 
     // Create workflow
+    // Ensuring every action has fieldMappings, auto-assiging execution order.
     const workflow = await Workflow.create({
       name,
       description,
@@ -312,6 +315,63 @@ exports.scheduleWorkflowPost = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error scheduling post',
+      error: error.message,
+    });
+  }
+};
+
+// Trigger a workflow manually (e.g. "Create Meeting" button)
+exports.triggerWorkflow = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { organizationId } = req.user;
+    const ExecutionLog = require('../models/ExecutionLog');
+    const workflowEngine = require('../services/workflowEngine');
+
+    const workflow = await Workflow.findOne({ _id: id, organizationId });
+
+    if (!workflow) {
+      return res.status(404).json({ success: false, message: 'Workflow not found' });
+    }
+
+    if (!workflow.isActive) {
+      return res.status(403).json({ success: false, message: 'Workflow is inactive. Please activate it first.' });
+    }
+
+    // Build payload from request body or use defaults
+    let payload = req.body || {};
+    if (typeof payload === 'object' && Object.keys(payload).length === 0) {
+      payload = { _trigger: workflow.triggerType, _triggeredAt: new Date().toISOString() };
+    }
+
+    // Create execution log entry
+    const executionLog = await ExecutionLog.create({
+      workflowId: workflow._id,
+      organizationId: workflow.organizationId,
+      triggerPayload: payload,
+      status: 'pending',
+    });
+
+    // Execute workflow asynchronously
+    workflowEngine.executeWorkflow(workflow, payload, executionLog._id).catch((error) => {
+      console.error('Manual trigger execution error:', error);
+    });
+
+    // Increment execution count
+    await Workflow.findByIdAndUpdate(workflow._id, {
+      $inc: { executionCount: 1 },
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Workflow triggered successfully',
+      executionLogId: executionLog._id,
+    });
+  } catch (error) {
+    console.error('Manual trigger error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error triggering workflow',
       error: error.message,
     });
   }

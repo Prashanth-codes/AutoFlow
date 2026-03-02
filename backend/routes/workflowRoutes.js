@@ -19,4 +19,7 @@ router.get('/:id/webhook-url', workflowController.getWebhookUrl);
 // Schedule a SCHEDULED_POST workflow
 router.post('/:id/schedule', workflowController.scheduleWorkflowPost);
 
+// Manually trigger a workflow (e.g. Create Meeting button)
+router.post('/:id/trigger', workflowController.triggerWorkflow);
+
 module.exports = router;

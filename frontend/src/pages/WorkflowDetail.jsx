@@ -47,6 +47,7 @@ export default function WorkflowDetail() {
   const [loading, setLoading] = useState(true);
   const [showWebhook, setShowWebhook] = useState(false);
   const [showTranscript, setShowTranscript] = useState(null);
+  const [triggering, setTriggering] = useState(false);
 
   useEffect(() => {
     loadWorkflow();
@@ -108,6 +109,20 @@ export default function WorkflowDetail() {
     }
   };
 
+  const handleTrigger = async () => {
+    setTriggering(true);
+    try {
+      await workflowAPI.trigger(id);
+      toast.success('Workflow triggered! Meeting is being created...');
+      // Reload data after a short delay to let execution complete
+      setTimeout(() => loadWorkflow(), 3000);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to trigger workflow');
+    } finally {
+      setTriggering(false);
+    }
+  };
+
   const copyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
     toast.success('Webhook URL copied!');
@@ -150,6 +165,16 @@ export default function WorkflowDetail() {
           </div>
         </div>
         <div className="page-header-actions">
+          {workflow.triggerType === 'ZOOM_EVENT' && (
+            <button
+              className="btn btn-primary"
+              onClick={handleTrigger}
+              disabled={triggering || !workflow.isActive}
+              title={!workflow.isActive ? 'Activate the workflow first' : ''}
+            >
+              <Video size={16} /> {triggering ? 'Creating...' : 'Create Meeting'}
+            </button>
+          )}
           <button className="btn btn-outline" onClick={() => navigate(`/workflows/${id}/edit`)}>
             <Pencil size={16} /> Edit
           </button>
@@ -297,7 +322,7 @@ export default function WorkflowDetail() {
             {zoomMeetings.length === 0 ? (
               <div className="empty-inline">
                 <Video size={20} className="text-muted" />
-                <span>No Zoom meetings yet. Trigger the webhook to create one.</span>
+                <span>No Zoom meetings yet. Click <strong>Create Meeting</strong> above to create one.</span>
               </div>
             ) : (
               <div className="table-wrapper">

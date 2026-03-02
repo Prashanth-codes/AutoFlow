@@ -12,14 +12,14 @@ const scheduler = require('./services/scheduler');
 
 const app = express();
 
-// Connect to DB, then recover any pending scheduled posts
+// Connect Db return a promise, after db connected, recover scheduled posts.
 connectDB().then(() => {
   scheduler.recoverScheduledPosts();
 });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true })); // parse form-data requests
 
 app.use('/api/auth', authRoutes);
 app.use('/api/workflows', workflowRoutes);
