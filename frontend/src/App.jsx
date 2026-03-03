@@ -12,7 +12,6 @@ import WorkflowDetail from './pages/WorkflowDetail';
 import WorkflowEdit from './pages/WorkflowEdit';
 import ExecutionLogs from './pages/ExecutionLogs';
 import ExecutionLogDetail from './pages/ExecutionLogDetail';
-import Connections from './pages/Connections';
 import Settings from './pages/Settings';
 
 function AppRoutes() {
@@ -53,7 +52,6 @@ function AppRoutes() {
         <Route path="/workflows/:id" element={<WorkflowDetail />} />
         <Route path="/logs" element={<ExecutionLogs />} />
         <Route path="/logs/:id" element={<ExecutionLogDetail />} />
-        <Route path="/connections" element={<Connections />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 

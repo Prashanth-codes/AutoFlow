@@ -15,8 +15,6 @@ exports.createWorkflow = async (req, res) => {
     // Validate trigger type
     const validTriggers = [
       'GOOGLE_FORM',
-      'PROJECT_ASSIGNMENT',
-      'SOCIAL_EVENT',
       'ZOOM_EVENT',
       'ECOMMERCE_ORDER',
       'SCHEDULED_POST',
@@ -147,8 +145,6 @@ exports.updateWorkflow = async (req, res) => {
     if (triggerType !== undefined) {
       const validTriggers = [
         'GOOGLE_FORM',
-        'PROJECT_ASSIGNMENT',
-        'SOCIAL_EVENT',
         'ZOOM_EVENT',
         'ECOMMERCE_ORDER',
         'SCHEDULED_POST',
@@ -301,7 +297,6 @@ exports.scheduleWorkflowPost = async (req, res) => {
       userId // pass the userId so LinkedIn service can look up the right account
     );
 
-    // Increment execution count
     workflow.executionCount += 1;
     await workflow.save();
 
@@ -320,7 +315,7 @@ exports.scheduleWorkflowPost = async (req, res) => {
   }
 };
 
-// Trigger a workflow manually (e.g. "Create Meeting" button)
+// Trigger a workflow manually
 exports.triggerWorkflow = async (req, res) => {
   try {
     const { id } = req.params;

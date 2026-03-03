@@ -25,8 +25,6 @@ const workflowSchema = new mongoose.Schema(
       type: String,
       enum: [
         'GOOGLE_FORM',
-        'PROJECT_ASSIGNMENT',
-        'SOCIAL_EVENT',
         'ZOOM_EVENT',
         'ECOMMERCE_ORDER',
         'SCHEDULED_POST',
@@ -89,9 +87,6 @@ const workflowSchema = new mongoose.Schema(
           enum: [
             'SEND_EMAIL',
             'STORE_DB',
-            'ASSIGN_EMPLOYEE',
-            'POST_LINKEDIN',
-            'SCHEDULE_POST',
             'CREATE_ZOOM_MEETING',
             'API_REQUEST',
           ],
@@ -123,7 +118,6 @@ const workflowSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster webhook lookups
 workflowSchema.index({ webhookId: 1 });
 workflowSchema.index({ organizationId: 1 });
 

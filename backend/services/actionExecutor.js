@@ -1,15 +1,11 @@
 const emailService = require('../utils/emailService');
-const linkedinService = require('./linkedinService');
 const zoomService = require('./zoomService');
-const scheduler = require('./scheduler');
 const FormSubmission = require('../models/FormSubmission');
 const Order = require('../models/Order');
 const ZoomMeeting = require('../models/ZoomMeeting');
 
 class ActionExecutor {
-  /**
-   * Resolve {{fieldName}} placeholders in a string using payload values
-   */
+  // Resolve {{fieldName}} placeholders in a string using payload values
   resolveTemplate(template, payload) {
     if (!template || typeof template !== 'string') return template;
     return template.replace(/\{\{(\w+)\}\}/g, (match, fieldName) => {
@@ -17,10 +13,9 @@ class ActionExecutor {
     });
   }
 
-  /**
-   * Build a resolved config by applying fieldMappings from the action.
-   * fieldMappings is { configKey: 'payloadFieldName' } or { configKey: '{{field1}} - {{field2}}' }
-   */
+  //Build a resolved config by applying fieldMappings from the action.
+  // fieldMappings is { configKey: 'payloadFieldName' } or { configKey: '{{field1}} - {{field2}}' }
+
   resolveFieldMappings(action, payload) {
     const { config = {}, fieldMappings = {} } = action;
     const resolved = { ...config };
@@ -54,15 +49,6 @@ class ActionExecutor {
       case 'STORE_DB':
         return await this.executeStoreDB(config, payload, workflow);
 
-      case 'ASSIGN_EMPLOYEE':
-        return await this.executeAssignEmployee(config, payload, workflow);
-
-      case 'POST_LINKEDIN':
-        return await this.executePostLinkedIn(config, payload);
-
-      case 'SCHEDULE_POST':
-        return await this.executeSchedulePost(config, payload, workflow);
-
       case 'CREATE_ZOOM_MEETING':
         return await this.executeCreateZoomMeeting(config, payload, workflow);
 
@@ -76,22 +62,16 @@ class ActionExecutor {
 
   async executeSendEmail(config, payload) {
     const { sendToAdmin, customSubject, customBody, recipientField } = config;
-    // Default sendToUser to true when not explicitly set (matches frontend default)
     const sendToUser = config.sendToUser !== undefined ? config.sendToUser : true;
     const recipients = [];
 
     // Add user email - check recipientField first, then multiple payload fields
     if (sendToUser) {
       let userEmail = null;
-
-      // recipientField may already be resolved to the actual email via fieldMappings,
-      // or it may still be a payload key name — handle both
       if (recipientField) {
         if (recipientField.includes('@')) {
-          // Already resolved to an email address
           userEmail = recipientField;
         } else if (payload[recipientField]) {
-          // Still a field name reference
           userEmail = payload[recipientField];
         }
       } else if (payload.userEmail) {
@@ -108,8 +88,6 @@ class ActionExecutor {
         recipients.push(userEmail);
       }
     }
-
-    // Add admin email (from config)
     if (sendToAdmin && config.adminEmail) {
       recipients.push(config.adminEmail);
     }
@@ -127,7 +105,6 @@ class ActionExecutor {
     let html;
     if (customBody) {
       html = this.resolveTemplate(customBody, payload);
-      // Wrap in basic HTML if it doesn't contain HTML tags
       if (!html.includes('<')) {
         html = `<div style="font-family:sans-serif;line-height:1.6">${html.replace(/\n/g, '<br/>')}</div>`;
       }
@@ -161,8 +138,6 @@ class ActionExecutor {
       if (workflow.triggerType === 'GOOGLE_FORM') {
         return await this.storeFormSubmission(config, payload, workflow);
       }
-
-      // Default fallback for other triggers
       return await this.storeFormSubmission(config, payload, workflow);
     } catch (error) {
       throw new Error(`Failed to store in database: ${error.message}`);
@@ -239,7 +214,6 @@ class ActionExecutor {
         .sort({ createdAt: -1 });
 
       if (existingMeeting) {
-        // Meeting already stored by CREATE_ZOOM_MEETING — update metadata if needed
         if (payload.meetingId || payload.meeting_id) {
           existingMeeting.meetingMetadata = {
             ...existingMeeting.meetingMetadata,
@@ -254,8 +228,6 @@ class ActionExecutor {
           message: 'Zoom meeting already stored by CREATE_ZOOM_MEETING action',
         };
       }
-
-      // No existing meeting — create a new record (standalone STORE_DB usage)
       const meetingId = payload.meetingId || payload.meeting_id || `zoom_${Date.now()}`;
       const topic = payload.topic || payload.meetingTopic || 'Zoom Meeting';
 
@@ -287,69 +259,6 @@ class ActionExecutor {
     }
   }
 
-  async executeAssignEmployee(config, payload, workflow) {
-    // Mock employee assignment
-    const { requiredSkill, employees } = payload;
-
-    if (!employees || employees.length === 0) {
-      throw new Error('No employees available for assignment');
-    }
-
-    // Simple assignment logic - pick first matching or random
-    const assignedEmployee = employees[0];
-
-    // Send notification email to assigned employee
-    await emailService.sendEmail(
-      assignedEmployee.email || 'employee@example.com',
-      'New Project Assignment',
-      `<p>You have been assigned to a new project requiring ${requiredSkill} skills.</p>`
-    );
-
-    return {
-      assignedTo: assignedEmployee,
-      skill: requiredSkill,
-    };
-  }
-
-  async executePostLinkedIn(config, payload) {
-    const { content, contentTemplate, mediaUrl } = config;
-    let postContent = content || payload.postContent || 'Check this out!';
-
-    // If contentTemplate is set, resolve placeholders
-    if (contentTemplate) {
-      postContent = this.resolveTemplate(contentTemplate, payload);
-    }
-
-    // Call LinkedIn service
-    const result = await linkedinService.postToLinkedIn(postContent, mediaUrl);
-
-    return result;
-  }
-
-  async executeSchedulePost(config, payload, workflow) {
-    const { platform, content, contentTemplate, scheduledFor, mediaUrl } = config;
-
-    if (!platform || (!content && !contentTemplate) || !scheduledFor) {
-      throw new Error('Missing required config: platform, content/contentTemplate, scheduledFor');
-    }
-
-    // Resolve template if set
-    const resolvedContent = contentTemplate
-      ? this.resolveTemplate(contentTemplate, payload)
-      : content;
-
-    // Schedule using setTimeout (pass full workflow for organizationId access)
-    const result = await scheduler.schedulePost(
-      workflow,
-      platform,
-      resolvedContent,
-      new Date(scheduledFor),
-      mediaUrl
-    );
-
-    return result;
-  }
-
   async executeCreateZoomMeeting(config, payload, workflow) {
     const {
       topic,
@@ -364,15 +273,11 @@ class ActionExecutor {
       storeInDatabase,
     } = config;
 
-    // Resolve attendees — from config, payload, or workflow triggerConfig
     let attendees = [];
 
-    // 1. Use attendees from action config
     if (configAttendees && Array.isArray(configAttendees) && configAttendees.length > 0) {
       attendees = configAttendees;
     }
-
-    // 2. Fall back to payload attendees or single email from payload
     if (attendees.length === 0) {
       if (payload.attendees && Array.isArray(payload.attendees)) {
         attendees = payload.attendees;
@@ -382,12 +287,9 @@ class ActionExecutor {
         attendees = [{ email, name }];
       }
     }
-
-    // Resolve template placeholders in topic and agenda
     const resolvedTopic = this.resolveTemplate(topic || 'Meeting', payload);
     const resolvedAgenda = this.resolveTemplate(agenda || '', payload);
 
-    // Create the Zoom meeting
     const meetingResult = await zoomService.createMeeting({
       topic: resolvedTopic,
       duration: duration || 60,
@@ -404,8 +306,6 @@ class ActionExecutor {
       emailsSent: [],
       storedInDb: false,
     };
-
-    // Send email invites to attendees with meeting URL
     if (sendEmailInvite !== false && attendees.length > 0) {
       const emailRecipients = attendees.map((a) => a.email).filter(Boolean);
 
@@ -454,7 +354,6 @@ class ActionExecutor {
       results.emailWarning = 'No attendees configured. Add attendees in the workflow trigger config or CREATE_ZOOM_MEETING action to send invite emails.';
     }
 
-    // Store meeting metadata in the database
     if (storeInDatabase !== false) {
       try {
         const zoomMeeting = await ZoomMeeting.create({
@@ -491,9 +390,6 @@ class ActionExecutor {
     return results;
   }
 
-  /**
-   * Generate an HTML email for the Zoom meeting invite.
-   */
   _generateZoomInviteEmail({ topic, joinUrl, password, duration, startTime, agenda, hostEmail }) {
     const formattedTime = startTime
       ? new Date(startTime).toLocaleString('en-US', {
@@ -580,7 +476,6 @@ class ActionExecutor {
     // Resolve {{field}} placeholders in URL
     const resolvedUrl = this.resolveTemplate(url, payload);
 
-    // Parse and resolve headers
     let parsedHeaders = {};
     if (rawHeaders) {
       try {
@@ -614,7 +509,6 @@ class ActionExecutor {
         const resolvedBodyStr = this.resolveTemplate(bodyStr, payload);
         parsedBody = JSON.parse(resolvedBodyStr);
       } catch (e) {
-        // If it can't be parsed as JSON, send as resolved string
         parsedBody = this.resolveTemplate(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody), payload);
       }
     }
@@ -632,7 +526,7 @@ class ActionExecutor {
         params: Object.keys(parsedParams).length > 0 ? parsedParams : undefined,
         data: parsedBody,
         timeout: 30000,
-        validateStatus: () => true, // Don't throw on non-2xx
+        validateStatus: () => true, 
       });
 
       return {
@@ -647,10 +541,8 @@ class ActionExecutor {
     }
   }
 
-  /**
-   * Auto-generate a formatted email from all payload fields.
-   * Used when template is 'custom' but no customBody was provided.
-   */
+  //Auto-generate a formatted email from all payload fields.
+  //Used when template is 'custom' but no customBody was provided.
   generateFieldsEmail(payload) {
     const rows = Object.entries(payload)
       .map(([key, val]) => {

@@ -9,13 +9,10 @@ class Scheduler {
     this.timers = new Map();
   }
 
-  /**
-   * Schedule a social media post using setTimeout (one-off execution).
-   * Accepts the full workflow object so organizationId can be read from it.
-   */
+  //Schedule a social media post using setTimeout (one-off execution).
+  //Accepts the full workflow object so organizationId can be read from it.
   async schedulePost(workflow, platform, content, scheduledFor, mediaUrl = null, userId = null) {
     try {
-      // Create scheduled post record
       const scheduledPost = await ScheduledPost.create({
         workflowId: workflow._id,
         organizationId: workflow.organizationId,
@@ -27,7 +24,6 @@ class Scheduler {
         userId: userId || workflow.createdBy, // store userId for LinkedIn OAuth lookup
       });
 
-      // Schedule with setTimeout (fires once, no yearly re-fire)
       this._scheduleTimer(scheduledPost._id, scheduledFor);
 
       return {
@@ -42,14 +38,10 @@ class Scheduler {
     }
   }
 
-  /**
-   * Set a timer for a scheduled post. If the time is in the past, execute immediately.
-   */
   _scheduleTimer(scheduledPostId, scheduledFor) {
     const delay = new Date(scheduledFor).getTime() - Date.now();
 
     if (delay <= 0) {
-      // Time already passed — execute immediately
       this.executeScheduledPost(scheduledPostId);
       return;
     }
@@ -73,7 +65,6 @@ class Scheduler {
 
       const workflow = await Workflow.findById(scheduledPost.workflowId);
 
-      // ── Create an Execution Log so this shows up in the UI ──
       const triggerPayload = {
         platform: scheduledPost.platform,
         content: scheduledPost.content,
@@ -93,7 +84,7 @@ class Scheduler {
       const executionResults = [];
       let hasError = false;
 
-      // ── Step 1: Execute the scheduled post to the platform ──
+      //Step 1: Execute the scheduled post to the platform
       try {
         switch (scheduledPost.platform) {
           case 'linkedin':
@@ -140,11 +131,9 @@ class Scheduler {
 
         console.error('Scheduled post platform error:', postError.message);
       }
-
-      // Clean up timer reference
       this.timers.delete(scheduledPostId.toString());
 
-      // ── Step 2: Execute chained workflow actions ──
+      // Step 2: Execute chained workflow actions
       if (workflow && workflow.actions && workflow.actions.length > 0) {
         const actionPayload = {
           platform: scheduledPost.platform,
@@ -152,7 +141,6 @@ class Scheduler {
           postedAt: scheduledPost.postedAt || new Date(),
           status: scheduledPost.status,
           scheduledFor: scheduledPost.scheduledFor,
-          // Provide notifyEmail so SEND_EMAIL action can find a recipient
           email: workflow.triggerConfig?.scheduledPostConfig?.notifyEmail || '',
           notifyEmail: workflow.triggerConfig?.scheduledPostConfig?.notifyEmail || '',
         };
@@ -183,8 +171,6 @@ class Scheduler {
           }
         }
       }
-
-      // ── Update the execution log ──
       executionLog.executionResults = executionResults;
       executionLog.status = hasError ? 'partial' : 'success';
       executionLog.completedAt = new Date();
@@ -192,8 +178,6 @@ class Scheduler {
       await executionLog.save();
     } catch (error) {
       console.error('Execute scheduled post error:', error);
-
-      // Update scheduled post as failed
       try {
         const scheduledPost = await ScheduledPost.findById(scheduledPostId);
         if (scheduledPost && scheduledPost.status === 'scheduled') {
@@ -201,9 +185,8 @@ class Scheduler {
           scheduledPost.error = error.message;
           await scheduledPost.save();
         }
-      } catch { /* ignore */ }
+      } catch { }
 
-      // Mark execution log as failed
       if (executionLog) {
         try {
           executionLog.status = 'failed';
@@ -211,15 +194,13 @@ class Scheduler {
           executionLog.completedAt = new Date();
           executionLog.duration = Date.now() - executionLog.startedAt;
           await executionLog.save();
-        } catch { /* ignore */ }
+        } catch { }
       }
     }
   }
 
-  /**
-   * Recover any pending scheduled posts from the database on server restart.
-   * Call this after the DB connection is established.
-   */
+  //Recover any pending scheduled posts from the database on server restart.
+  // Call this after the DB connection is established.
   async recoverScheduledPosts() {
     try {
       const pendingPosts = await ScheduledPost.find({ status: 'scheduled' });
@@ -232,14 +213,6 @@ class Scheduler {
       console.log('✅ Scheduled post recovery complete');
     } catch (error) {
       console.error('Error recovering scheduled posts:', error);
-    }
-  }
-
-  cancelScheduledPost(scheduledPostId) {
-    const timer = this.timers.get(scheduledPostId.toString());
-    if (timer) {
-      clearTimeout(timer);
-      this.timers.delete(scheduledPostId.toString());
     }
   }
 }

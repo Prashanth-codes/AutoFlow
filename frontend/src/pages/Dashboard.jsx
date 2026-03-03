@@ -41,10 +41,9 @@ export default function Dashboard() {
         totalWorkflows: wfs.length,
         activeWorkflows: wfs.filter((w) => w.isActive).length,
         totalExecutions,
-        successRate: totalExecutions > 0 ? 85 : 0, // approximation
+        successRate: totalExecutions > 0 ? 85 : 0, 
       });
 
-      // Load logs for the first few workflows
       const allLogs = [];
       for (const wf of wfs.slice(0, 5)) {
         try {
@@ -139,7 +138,6 @@ export default function Dashboard() {
       </div>
 
       <div className="dashboard-grid">
-        {/* Recent Workflows */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Recent Workflows</h3>
@@ -183,7 +181,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Executions */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Recent Executions</h3>

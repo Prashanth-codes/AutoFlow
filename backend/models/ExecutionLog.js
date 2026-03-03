@@ -42,7 +42,7 @@ const executionLogSchema = new mongoose.Schema(
       default: Date.now,
     },
     completedAt: Date,
-    duration: Number, // in milliseconds
+    duration: Number,
   },
   { timestamps: true }
 );

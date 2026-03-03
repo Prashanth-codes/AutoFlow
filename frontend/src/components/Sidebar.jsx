@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   GitBranch,
   ScrollText,
-  Plug,
   Settings,
   Zap,
 } from 'lucide-react';
@@ -12,7 +11,6 @@ const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
   { to: '/logs', icon: ScrollText, label: 'Execution Logs' },
-  { to: '/connections', icon: Plug, label: 'Connections' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

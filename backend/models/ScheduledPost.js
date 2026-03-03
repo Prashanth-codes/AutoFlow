@@ -42,7 +42,6 @@ const scheduledPostSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster lookups
 scheduledPostSchema.index({ organizationId: 1, status: 1, scheduledFor: 1 });
 
 module.exports = mongoose.model('ScheduledPost', scheduledPostSchema);

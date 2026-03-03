@@ -80,7 +80,6 @@ export default function ExecutionLogDetail() {
         </div>
       </div>
 
-      {/* Summary */}
       <div className="detail-grid">
         <div className="card">
           <div className="card-header">

@@ -32,7 +32,7 @@ exports.handleWebhook = async (req, res) => {
       const flattened = {};
       for (const item of payload.responses) {
         if (item.question && item.answer !== undefined) {
-          // Convert question to a snake_case-style key: "Full Name" -> "full_name"
+          // all should in lowercase and spaces replaced with underscores.
           const key = item.question.trim().toLowerCase().replace(/\s+/g, '_');
           flattened[key] = item.answer;
         }
@@ -42,10 +42,7 @@ exports.handleWebhook = async (req, res) => {
       payload = flattened;
     }
 
-    // For ZOOM_EVENT triggers, all meeting config is in the CREATE_ZOOM_MEETING action.
-    // The webhook payload is passed through as-is to the action executor.
-
-    // Ensure payload is always a valid object (empty curl body can result in undefined)
+    // Ensure payload is always a valid object
     if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
       payload = { _trigger: workflow.triggerType, _triggeredAt: new Date().toISOString() };
     }

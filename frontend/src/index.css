@@ -1,10 +1,5 @@
-/* ═══════════════════════════════════════════════════════
-   FlowPilot — Complete Design System
-   ═══════════════════════════════════════════════════════ */
 
-/* ── CSS Variables ─────────────────────────────────── */
 :root {
-  /* Colors */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-dark: #0f172a;
@@ -32,27 +27,22 @@
   --info: #3b82f6;
   --info-light: #eff6ff;
 
-  /* Spacing */
   --sidebar-width: 260px;
   --header-height: 64px;
 
-  /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
 
-  /* Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
 
-  /* Transitions */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Reset & Globals ───────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -1430,82 +1420,6 @@ input, select, textarea, button {
   overflow-y: auto;
 }
 
-/* ── Connections Grid ──────────────────────────────── */
-.connections-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.25rem;
-}
-
-.connection-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  transition: all var(--transition);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-}
-
-.connection-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.connection-card.connected {
-  border-color: var(--success);
-  box-shadow: 0 0 0 1px var(--success);
-}
-
-.connection-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.connection-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.connection-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--success);
-}
-
-.connection-name {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.35rem;
-}
-
-.connection-desc {
-  font-size: 0.835rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin-bottom: 1.25rem;
-  flex: 1;
-}
-
-.connection-card-bottom {
-  margin-top: auto;
-}
-
-.connect-form .form-group:first-of-type {
-  margin-top: 0;
-}
-
 /* ── Settings ──────────────────────────────────────── */
 .settings-layout {
   display: grid;
@@ -1795,9 +1709,6 @@ input, select, textarea, button {
 
 @media (max-width: 480px) {
   .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  .connections-grid {
     grid-template-columns: 1fr;
   }
 }

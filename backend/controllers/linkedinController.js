@@ -6,7 +6,6 @@ const LinkedInAccount = require('../models/LinkedInAccount');
 // Force IPv4 to avoid ETIMEDOUT when Node tries IPv6 first
 const httpsAgent = new https.Agent({ family: 4 });
 
-// ─── GET /api/auth/linkedin ────────────────────────────────
 // Redirects the browser to LinkedIn's OAuth consent screen
 exports.startOAuth = (req, res) => {
   const clientId = process.env.LINKEDIN_CLIENT_ID;
@@ -26,11 +25,11 @@ exports.startOAuth = (req, res) => {
   }
 
   // Optional returnTo path so we can redirect back to the right page
-  const returnTo = req.query.returnTo || '/connections';
+  const returnTo = req.query.returnTo || '/workflows';
 
-  console.log('🔗 LinkedIn OAuth start — userId:', userId, 'returnTo:', returnTo);
+  console.log('LinkedIn OAuth start — userId:', userId, 'returnTo:', returnTo);
 
-  // Encode userId + returnTo in the state parameter as base64 JSON
+  // Encode userId and returnTo in the state parameter as base64 JSON
   const statePayload = JSON.stringify({ userId, returnTo });
   const stateEncoded = Buffer.from(statePayload).toString('base64url');
 
@@ -45,22 +44,20 @@ exports.startOAuth = (req, res) => {
   res.redirect(authUrl);
 };
 
-// ─── GET /api/auth/linkedin/callback ───────────────────────
 // LinkedIn redirects here after user consents
 exports.handleCallback = async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
   // Decode state — supports both new base64-JSON format and legacy plain userId
   let appUserId = '';
-  let returnTo = '/connections';
+  let returnTo = '/workflows';
   const stateParam = req.query.state;
   if (stateParam) {
     try {
       const decoded = JSON.parse(Buffer.from(stateParam, 'base64url').toString());
       appUserId = decoded.userId || '';
-      returnTo = decoded.returnTo || '/connections';
+      returnTo = decoded.returnTo || '/workflows';
     } catch {
-      // Legacy format: state is just the userId string
       appUserId = stateParam;
     }
   }
@@ -101,7 +98,7 @@ exports.handleCallback = async (req, res) => {
 
     // 2. Extract the user's LinkedIn id
     //    With `openid` scope LinkedIn returns an id_token JWT — decode its
-    //    payload to get the `sub` claim (no extra API call needed).
+    //    payload to get the `sub` claim, no extra API call needed.
     let linkedInId;
 
     if (id_token) {
@@ -111,7 +108,7 @@ exports.handleCallback = async (req, res) => {
       linkedInId = payload.sub;
       console.log('📋 Decoded id_token sub:', linkedInId);
     } else {
-      // Fallback: call /v2/userinfo (may time out on some networks)
+      // Fallback: call /v2/userinfo if anything goes wrong.
       const profileRes = await axios.get('https://api.linkedin.com/v2/userinfo', {
         headers: { Authorization: `Bearer ${access_token}` },
         timeout: 10000,
@@ -131,9 +128,9 @@ exports.handleCallback = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log(`✅ LinkedIn connected for user ${appUserId}  urn=${memberUrn}`);
+    console.log(`LinkedIn connected for user ${appUserId}  urn=${memberUrn}`);
 
-    // 4. Redirect back to the originating frontend page
+    // 4. Redirect back to the frontend page
     res.redirect(`${frontendUrl}${returnTo}?linkedin=connected`);
   } catch (err) {
     console.error('LinkedIn OAuth callback error:', err.response?.data || err.message || err);
@@ -141,7 +138,6 @@ exports.handleCallback = async (req, res) => {
   }
 };
 
-// ─── GET /api/linkedin/status ──────────────────────────────
 // Check if the current user has a linked LinkedIn account
 exports.getStatus = async (req, res) => {
   try {
@@ -161,8 +157,7 @@ exports.getStatus = async (req, res) => {
   }
 };
 
-// ─── POST /api/linkedin/test-post ──────────────────────────
-// Create a simple text post on behalf of the user
+// Create a simple text post for user
 exports.testPost = async (req, res) => {
   try {
     const account = await LinkedInAccount.findOne({ appUserId: req.user.userId });
@@ -217,7 +212,6 @@ exports.testPost = async (req, res) => {
   }
 };
 
-// ─── DELETE /api/linkedin/disconnect ───────────────────────
 // Remove the stored LinkedIn account
 exports.disconnect = async (req, res) => {
   try {

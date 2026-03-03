@@ -17,18 +17,16 @@ import toast from 'react-hot-toast';
 
 const TRIGGER_LABELS = {
   GOOGLE_FORM: 'Google Form',
-  PROJECT_ASSIGNMENT: 'Project Assignment',
-  SOCIAL_EVENT: 'Social Event',
   ZOOM_EVENT: 'Zoom Event',
   ECOMMERCE_ORDER: 'E-commerce Order',
+  SCHEDULED_POST: 'Scheduled Post',
 };
 
 const TRIGGER_COLORS = {
   GOOGLE_FORM: '#4285f4',
-  PROJECT_ASSIGNMENT: '#34a853',
-  SOCIAL_EVENT: '#ea4335',
   ZOOM_EVENT: '#2d8cff',
   ECOMMERCE_ORDER: '#fbbc04',
+  SCHEDULED_POST: '#0077b5',
 };
 
 export default function Workflows() {
@@ -107,7 +105,6 @@ export default function Workflows() {
         </Link>
       </div>
 
-      {/* Filters */}
       <div className="toolbar">
         <div className="input-with-icon search-bar">
           <Search size={18} className="input-icon" />
@@ -129,7 +126,6 @@ export default function Workflows() {
         </div>
       </div>
 
-      {/* Workflow Cards */}
       {filtered.length === 0 ? (
         <EmptyState
           icon={GitBranch}

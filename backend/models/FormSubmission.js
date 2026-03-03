@@ -36,7 +36,6 @@ const formSubmissionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster lookups
 formSubmissionSchema.index({ organizationId: 1, workflowId: 1 });
 
 module.exports = mongoose.model('FormSubmission', formSubmissionSchema);

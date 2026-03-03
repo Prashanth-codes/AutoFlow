@@ -17,9 +17,6 @@ import {
   AlertCircle,
   Mail,
   Database,
-  UserCheck,
-  Linkedin,
-  CalendarClock,
   Video,
   Webhook,
   FileText,
@@ -30,9 +27,6 @@ import toast from 'react-hot-toast';
 const ACTION_META = {
   SEND_EMAIL: { label: 'Send Email', icon: Mail, color: '#ea4335' },
   STORE_DB: { label: 'Store in DB', icon: Database, color: '#34a853' },
-  ASSIGN_EMPLOYEE: { label: 'Assign Employee', icon: UserCheck, color: '#4285f4' },
-  POST_LINKEDIN: { label: 'Post to LinkedIn', icon: Linkedin, color: '#0077b5' },
-  SCHEDULE_POST: { label: 'Schedule Post', icon: CalendarClock, color: '#fbbc04' },
   CREATE_ZOOM_MEETING: { label: 'Create Zoom Meeting', icon: Video, color: '#2d8cff' },
   API_REQUEST: { label: 'API Request', icon: Send, color: '#8b5cf6' },
 };
@@ -58,27 +52,22 @@ export default function WorkflowDetail() {
       const wfRes = await workflowAPI.getById(id);
       setWorkflow(wfRes.data.workflow);
 
-      // Load webhook URL and logs independently — don't fail the page if these error
       try {
         const whRes = await workflowAPI.getWebhookUrl(id);
         setWebhookUrl(whRes.data.webhookUrl || '');
       } catch {
-        // webhook URL not critical
       }
 
       try {
         const logRes = await logsAPI.getByWorkflow(id);
         setLogs(logRes.data.logs || []);
       } catch {
-        // logs may be empty
       }
 
-      // Load zoom meetings if ZOOM_EVENT trigger
       try {
         const zmRes = await zoomAPI.getMeetings(id);
         setZoomMeetings(zmRes.data.meetings || []);
       } catch {
-        // zoom meetings may be empty
       }
     } catch {
       toast.error('Failed to load workflow');
@@ -114,7 +103,6 @@ export default function WorkflowDetail() {
     try {
       await workflowAPI.trigger(id);
       toast.success('Workflow triggered! Meeting is being created...');
-      // Reload data after a short delay to let execution complete
       setTimeout(() => loadWorkflow(), 3000);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to trigger workflow');
@@ -191,7 +179,6 @@ export default function WorkflowDetail() {
         </div>
       </div>
 
-      {/* Workflow Info */}
       <div className="detail-grid">
         <div className="card">
           <div className="card-header">
@@ -227,7 +214,6 @@ export default function WorkflowDetail() {
           </div>
         </div>
 
-        {/* Action Pipeline */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Action Pipeline</h3>
@@ -265,7 +251,6 @@ export default function WorkflowDetail() {
         </div>
       </div>
 
-      {/* Form Fields Detail */}
       {(workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') &&
         workflow.triggerConfig?.formFields?.length > 0 && (
           <div className="card" style={{ marginTop: '1.5rem' }}>
@@ -309,7 +294,6 @@ export default function WorkflowDetail() {
 
 
 
-      {/* Zoom Meetings History */}
       {workflow.triggerType === 'ZOOM_EVENT' && (
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
@@ -389,7 +373,6 @@ export default function WorkflowDetail() {
         </div>
       )}
 
-      {/* Execution Logs */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
           <h3 className="card-title">Execution History</h3>
@@ -434,7 +417,6 @@ export default function WorkflowDetail() {
         </div>
       </div>
 
-      {/* Webhook Modal */}
       <Modal isOpen={showWebhook} onClose={() => setShowWebhook(false)} title="Webhook URL">
         <p className="modal-desc">
           Send a POST request to this URL to trigger your workflow. No authentication required.
@@ -496,7 +478,6 @@ export default function WorkflowDetail() {
         )}
       </Modal>
 
-      {/* Transcript Modal */}
       <Modal isOpen={!!showTranscript} onClose={() => setShowTranscript(null)} title={`Transcript: ${showTranscript?.topic || ''}`}>
         {showTranscript && (
           <div>

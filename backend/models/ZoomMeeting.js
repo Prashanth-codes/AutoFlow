@@ -95,7 +95,6 @@ const zoomMeetingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for faster lookups
 zoomMeetingSchema.index({ workflowId: 1, createdAt: -1 });
 zoomMeetingSchema.index({ organizationId: 1, createdAt: -1 });
 zoomMeetingSchema.index({ meetingId: 1 });

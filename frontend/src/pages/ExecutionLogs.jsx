@@ -41,7 +41,6 @@ export default function ExecutionLogs() {
             );
           }
         } catch {
-          // skip
         }
       }
       allLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

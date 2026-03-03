@@ -60,7 +60,6 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster lookups
 orderSchema.index({ organizationId: 1, createdAt: -1 });
 orderSchema.index({ orderId: 1, organizationId: 1 });
 orderSchema.index({ customerEmail: 1, organizationId: 1 });

@@ -33,13 +33,9 @@ class WorkflowEngine {
             error: error.message,
             executedAt: new Date(),
           });
-
-          // Continue to next action instead of breaking
-          // This allows partial execution (optional - can be made configurable)
         }
       }
 
-      // Update execution log
       executionLog.executionResults = executionResults;
       executionLog.status = hasError ? 'partial' : 'success';
       executionLog.completedAt = new Date();
@@ -50,7 +46,6 @@ class WorkflowEngine {
     } catch (error) {
       console.error('Workflow execution failed:', error);
 
-      // Update log with fatal error
       try {
         await ExecutionLog.findByIdAndUpdate(executionLogId, {
           status: 'failed',

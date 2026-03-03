@@ -3,10 +3,8 @@ const ZoomMeeting = require('../models/ZoomMeeting');
 const zoomService = require('../services/zoomService');
 const emailService = require('../utils/emailService');
 
-/**
- * Verify Zoom webhook request signature.
- * Zoom sends a `x-zm-signature` header using HMAC-SHA256 with the webhook secret token.
- */
+ //Verify Zoom webhook request signature.
+ //Zoom sends a `x-zm-signature` header using HMAC-SHA256 with the webhook secret token.
 function verifyZoomWebhook(req) {
   const secret = process.env.ZOOM_WEBHOOK_SECRET_TOKEN;
   if (!secret) {
@@ -29,18 +27,12 @@ function verifyZoomWebhook(req) {
   return signature === expectedSignature;
 }
 
-/**
- * Handle Zoom webhook events.
- * Events we handle:
- *   - endpoint.url_validation  → Zoom CRC challenge-response
- *   - meeting.ended            → Update meeting status, fetch transcript
- *   - recording.completed      → Fetch and store transcript + recording URL
- */
+
 exports.handleZoomWebhook = async (req, res) => {
   try {
     const { event, payload } = req.body;
 
-    // ── Zoom URL Validation (CRC challenge) ──
+    // Zoom URL Validation
     if (event === 'endpoint.url_validation') {
       const plainToken = payload?.plainToken;
       const secret = process.env.ZOOM_WEBHOOK_SECRET_TOKEN || '';
@@ -55,7 +47,7 @@ exports.handleZoomWebhook = async (req, res) => {
       });
     }
 
-    // ── Signature verification for all other events ──
+    //Signature verification for all other events
     if (!verifyZoomWebhook(req)) {
       console.warn('Zoom webhook signature verification failed');
       return res.status(401).json({ success: false, message: 'Invalid signature' });
@@ -63,31 +55,31 @@ exports.handleZoomWebhook = async (req, res) => {
 
     console.log(`📨 Zoom webhook event: ${event}`);
 
-    // ── meeting.ended ──
+    // meeting ended
     if (event === 'meeting.ended') {
       await handleMeetingEnded(payload);
       return res.status(200).json({ success: true, message: 'Meeting ended event processed' });
     }
 
-    // ── meeting.started ──
+    // meeting started
     if (event === 'meeting.started') {
       await handleMeetingStarted(payload);
       return res.status(200).json({ success: true, message: 'Meeting started event processed' });
     }
 
-    // ── recording.completed ──
+    //recording completed
     if (event === 'recording.completed') {
       await handleRecordingCompleted(payload);
       return res.status(200).json({ success: true, message: 'Recording completed event processed' });
     }
 
-    // ── recording.transcript_completed ──
+    //recording transcript completed
     if (event === 'recording.transcript_completed') {
       await handleTranscriptCompleted(payload);
       return res.status(200).json({ success: true, message: 'Transcript completed event processed' });
     }
 
-    // Acknowledge other events
+    //other events
     return res.status(200).json({ success: true, message: `Event ${event} received` });
   } catch (error) {
     console.error('Zoom webhook error:', error);
@@ -95,9 +87,7 @@ exports.handleZoomWebhook = async (req, res) => {
   }
 };
 
-/**
- * Handle meeting.started — update status to 'started'.
- */
+ //Handle meeting.started — update status to 'started'.
 async function handleMeetingStarted(payload) {
   const meetingId = String(payload?.object?.id || '');
   if (!meetingId) return;
@@ -117,10 +107,9 @@ async function handleMeetingStarted(payload) {
   console.log(`✅ Zoom meeting ${meetingId} marked as started`);
 }
 
-/**
- * Handle meeting.ended — update status, store duration/participant count,
- * and try to fetch transcript if auto_recording was enabled.
- */
+ //Handle meeting ended, update status, store duration/participant count,
+ //and try to fetch transcript if auto_recording was enabled.
+
 async function handleMeetingEnded(payload) {
   const meetingId = String(payload?.object?.id || '');
   if (!meetingId) return;
@@ -143,19 +132,16 @@ async function handleMeetingEnded(payload) {
   await meeting.save();
   console.log(`✅ Zoom meeting ${meetingId} marked as ended (duration: ${meeting.actualDuration}min, participants: ${meeting.participantCount})`);
 
-  // Attempt to fetch transcript (may not be available immediately)
+  // Attempt to fetch transcript.
   setTimeout(async () => {
     try {
       await fetchAndStoreTranscript(meetingId);
     } catch (err) {
       console.log(`Transcript not yet available for meeting ${meetingId} — will be fetched on recording.completed`);
     }
-  }, 30000); // Wait 30s for processing
+  }, 30000);
 }
 
-/**
- * Handle recording.completed — fetch recordings and transcript.
- */
 async function handleRecordingCompleted(payload) {
   const meetingId = String(payload?.object?.id || '');
   if (!meetingId) return;
@@ -168,16 +154,12 @@ async function handleRecordingCompleted(payload) {
 
   // Extract recording files from the webhook payload
   const recordingFiles = payload?.object?.recording_files || [];
-
-  // Find video recording URL
   const videoFile = recordingFiles.find(
     (f) => f.file_type === 'MP4' || f.recording_type === 'shared_screen_with_speaker_view'
   );
   if (videoFile) {
     meeting.recordingUrl = videoFile.download_url || '';
   }
-
-  // Find transcript file
   const transcriptFile = recordingFiles.find(
     (f) => f.file_type === 'TRANSCRIPT' || f.recording_type === 'audio_transcript'
   );
@@ -192,17 +174,10 @@ async function handleRecordingCompleted(payload) {
 
   await meeting.save();
   console.log(`✅ Recording stored for meeting ${meetingId}`);
-
-  // Try fetching actual transcript text via API
   await fetchAndStoreTranscript(meetingId);
-
-  // Send post-meeting summary email to attendees
   await sendMeetingSummaryEmail(meeting);
 }
 
-/**
- * Handle recording.transcript_completed — Zoom finished processing the transcript.
- */
 async function handleTranscriptCompleted(payload) {
   const meetingId = String(payload?.object?.id || '');
   if (!meetingId) return;
@@ -210,9 +185,6 @@ async function handleTranscriptCompleted(payload) {
   await fetchAndStoreTranscript(meetingId);
 }
 
-/**
- * Fetch transcript from Zoom API and store it in the DB.
- */
 async function fetchAndStoreTranscript(meetingId) {
   const meeting = await ZoomMeeting.findOne({ meetingId });
   if (!meeting) return;
@@ -231,9 +203,6 @@ async function fetchAndStoreTranscript(meetingId) {
   }
 }
 
-/**
- * Send a post-meeting summary email to attendees.
- */
 async function sendMeetingSummaryEmail(meeting) {
   if (!meeting.attendees || meeting.attendees.length === 0) return;
 
@@ -301,9 +270,6 @@ async function sendMeetingSummaryEmail(meeting) {
   }
 }
 
-/**
- * Get all Zoom meetings for a workflow (API endpoint).
- */
 exports.getZoomMeetings = async (req, res) => {
   try {
     const { workflowId } = req.params;
@@ -329,9 +295,6 @@ exports.getZoomMeetings = async (req, res) => {
   }
 };
 
-/**
- * Get a single Zoom meeting by its DB ID.
- */
 exports.getZoomMeeting = async (req, res) => {
   try {
     const { meetingDbId } = req.params;

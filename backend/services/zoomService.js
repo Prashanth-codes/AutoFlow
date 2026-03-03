@@ -10,12 +10,10 @@ class ZoomService {
     this._tokenExpiry = null;
   }
 
-  /**
-   * Get an OAuth access token using Server-to-Server OAuth (Account Credentials).
-   * Caches the token until it expires.
-   */
+  //Get an OAuth access token using Server-to-Server OAuth (Account Credentials).
+  // Caches the token until it expires.
+
   async getAccessToken() {
-    // Return cached token if still valid
     if (this._accessToken && this._tokenExpiry && Date.now() < this._tokenExpiry) {
       return this._accessToken;
     }
@@ -37,7 +35,6 @@ class ZoomService {
       );
 
       this._accessToken = response.data.access_token;
-      // Cache token — expire 5 minutes early for safety
       this._tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
       return this._accessToken;
     } catch (error) {
@@ -131,7 +128,6 @@ class ZoomService {
       };
     } catch (error) {
       console.error('Zoom meeting creation error:', error.response?.data || error.message);
-      // Fallback to mock if API fails in development
       if (process.env.NODE_ENV !== 'production') {
         console.warn('Falling back to mock Zoom meeting creation');
         return this._mockCreateMeeting({ topic, duration, agenda, startTime, attendees });
@@ -140,9 +136,6 @@ class ZoomService {
     }
   }
 
-  /**
-   * Fetch meeting details by ID
-   */
   async getMeeting(meetingId) {
     try {
       const token = await this.getAccessToken();
@@ -156,9 +149,6 @@ class ZoomService {
     }
   }
 
-  /**
-   * Fetch recordings for a meeting
-   */
   async getMeetingRecordings(meetingId) {
     try {
       const token = await this.getAccessToken();
@@ -173,10 +163,6 @@ class ZoomService {
     }
   }
 
-  /**
-   * Fetch transcript for a meeting from cloud recordings.
-   * Zoom stores transcripts as VTT files inside recording files.
-   */
   async getMeetingTranscript(meetingId) {
     try {
       const recordings = await this.getMeetingRecordings(meetingId);
@@ -184,7 +170,6 @@ class ZoomService {
         return { transcript: '', transcriptUrl: '' };
       }
 
-      // Find the transcript file (type: 'TRANSCRIPT')
       const transcriptFile = recordings.recording_files.find(
         (f) => f.file_type === 'TRANSCRIPT' || f.recording_type === 'audio_transcript'
       );
@@ -195,7 +180,6 @@ class ZoomService {
 
       const transcriptUrl = transcriptFile.download_url;
 
-      // Download the VTT content
       const token = await this.getAccessToken();
       const transcriptResponse = await axios.get(transcriptUrl, {
         headers: { Authorization: `Bearer ${token}` },
@@ -206,7 +190,6 @@ class ZoomService {
         ? transcriptResponse.data
         : JSON.stringify(transcriptResponse.data);
 
-      // Parse VTT to plain text
       const transcript = this._parseVttToText(rawVtt);
 
       return {
@@ -219,33 +202,11 @@ class ZoomService {
     }
   }
 
-  /**
-   * Get recording download URL (video)
-   */
-  async getRecordingUrl(meetingId) {
-    try {
-      const recordings = await this.getMeetingRecordings(meetingId);
-      if (!recordings || !recordings.recording_files) return '';
-
-      const videoFile = recordings.recording_files.find(
-        (f) => f.file_type === 'MP4' || f.recording_type === 'shared_screen_with_speaker_view'
-      );
-
-      return videoFile ? videoFile.download_url : '';
-    } catch (error) {
-      return '';
-    }
-  }
-
-  /**
-   * Parse VTT (WebVTT) subtitle content to plain text
-   */
   _parseVttToText(vtt) {
     if (!vtt) return '';
     const lines = vtt.split('\n');
     const textLines = [];
     for (const line of lines) {
-      // Skip VTT headers, timestamps, and blank lines
       if (
         line.startsWith('WEBVTT') ||
         line.includes('-->') ||
@@ -259,9 +220,7 @@ class ZoomService {
     return textLines.join(' ').trim();
   }
 
-  /**
-   * Mock implementation for development / when credentials aren't configured
-   */
+  // Mock implementation for development / when credentials aren't configured
   _mockCreateMeeting({ topic, duration, agenda, startTime, attendees }) {
     const mockId = `zoom_${Date.now()}`;
     console.log('🎥 [MOCK] Creating Zoom meeting:', { topic, duration, agenda, attendees: attendees?.length || 0 });

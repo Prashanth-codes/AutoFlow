@@ -9,7 +9,6 @@ import {
   Save,
   Mail,
   Database,
-  UserCheck,
   Linkedin,
   CalendarClock,
   Video,
@@ -21,8 +20,6 @@ import toast from 'react-hot-toast';
 
 const TRIGGER_TYPES = [
   { value: 'GOOGLE_FORM', label: 'Google Form', desc: 'Triggered when a Google Form is submitted' },
-  { value: 'PROJECT_ASSIGNMENT', label: 'Project Assignment', desc: 'Triggered when a project is assigned' },
-  { value: 'SOCIAL_EVENT', label: 'Social Event', desc: 'Triggered by social media events' },
   { value: 'ZOOM_EVENT', label: 'Zoom Event', desc: 'Triggered by Zoom meeting events' },
   { value: 'ECOMMERCE_ORDER', label: 'E-commerce Order', desc: 'Triggered when an order is placed' },
   { value: 'SCHEDULED_POST', label: 'Scheduled Post', desc: 'Schedule a post to social media at a specific time' },
@@ -31,9 +28,6 @@ const TRIGGER_TYPES = [
 const ACTION_TYPES = [
   { value: 'SEND_EMAIL', label: 'Send Email', icon: Mail, color: '#ea4335' },
   { value: 'STORE_DB', label: 'Store in Database', icon: Database, color: '#34a853' },
-  { value: 'ASSIGN_EMPLOYEE', label: 'Assign Employee', icon: UserCheck, color: '#4285f4' },
-  { value: 'POST_LINKEDIN', label: 'Post to LinkedIn', icon: Linkedin, color: '#0077b5' },
-  { value: 'SCHEDULE_POST', label: 'Schedule Post', icon: CalendarClock, color: '#fbbc04' },
   { value: 'CREATE_ZOOM_MEETING', label: 'Create Zoom Meeting', icon: Video, color: '#2d8cff' },
   { value: 'API_REQUEST', label: 'API Request', icon: Send, color: '#8b5cf6' },
 ];
@@ -178,80 +172,6 @@ function ActionConfigFields({ action, onChange, formFields }) {
           )}
         </div>
       );
-    case 'POST_LINKEDIN':
-      return (
-        <div className="action-config">
-          <div className="form-group">
-            <label>Post Content Template</label>
-            <textarea
-              placeholder="Use {{name}}, {{email}}, etc. for dynamic values"
-              value={action.config?.contentTemplate || ''}
-              onChange={(e) => updateConfig('contentTemplate', e.target.value)}
-              rows={3}
-            />
-            {hasFormFields && (
-              <FieldInsertButtons
-                formFields={formFields}
-                onInsert={(tag) => updateConfig('contentTemplate', (action.config?.contentTemplate || '') + tag)}
-              />
-            )}
-          </div>
-          <div className="form-group">
-            <label>Visibility</label>
-            <select
-              value={action.config?.visibility || 'PUBLIC'}
-              onChange={(e) => updateConfig('visibility', e.target.value)}
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="CONNECTIONS">Connections Only</option>
-            </select>
-          </div>
-        </div>
-      );
-    case 'SCHEDULE_POST':
-      return (
-        <div className="action-config">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Platform</label>
-              <select
-                value={action.config?.platform || 'linkedin'}
-                onChange={(e) => updateConfig('platform', e.target.value)}
-              >
-                <option value="linkedin">LinkedIn</option>
-                <option value="twitter">Twitter</option>
-                <option value="facebook">Facebook</option>
-                <option value="instagram">Instagram</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Delay (minutes)</label>
-              <input
-                type="number"
-                min={1}
-                placeholder="30"
-                value={action.config?.delayMinutes || ''}
-                onChange={(e) => updateConfig('delayMinutes', parseInt(e.target.value))}
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Content Template</label>
-            <textarea
-              placeholder="Post content..."
-              value={action.config?.contentTemplate || ''}
-              onChange={(e) => updateConfig('contentTemplate', e.target.value)}
-              rows={3}
-            />
-            {hasFormFields && (
-              <FieldInsertButtons
-                formFields={formFields}
-                onInsert={(tag) => updateConfig('contentTemplate', (action.config?.contentTemplate || '') + tag)}
-              />
-            )}
-          </div>
-        </div>
-      );
     case 'CREATE_ZOOM_MEETING': {
       const attendees = action.config?.attendees || [];
       const addAttendee = () => {
@@ -355,7 +275,6 @@ function ActionConfigFields({ action, onChange, formFields }) {
             />
           </div>
 
-          {/* Attendees */}
           <div className="form-group">
             <label>Attendees (will receive email invite with meeting URL)</label>
             {attendees.length > 0 && (
@@ -420,15 +339,6 @@ function ActionConfigFields({ action, onChange, formFields }) {
         </div>
       );
     }
-    case 'ASSIGN_EMPLOYEE':
-      return (
-        <div className="action-config">
-          <p className="action-config-hint">
-            Employee assignment will use the <code>employees</code> and <code>assignedTo</code> fields
-            from the incoming webhook payload.
-          </p>
-        </div>
-      );
     case 'API_REQUEST':
       return (
         <div className="action-config">
@@ -555,7 +465,6 @@ export default function WorkflowEdit() {
     }
   };
 
-  // ── Form Field Management ────────────────────
   const addFormField = () => {
     setForm((prev) => ({
       ...prev,
@@ -649,7 +558,6 @@ export default function WorkflowEdit() {
       toast.error('Please add at least one action');
       return;
     }
-    // Validate form fields if Google Form trigger
     if ((form.triggerType === 'GOOGLE_FORM' || form.triggerType === 'ECOMMERCE_ORDER') && form.triggerConfig.formFields.length > 0) {
       const invalidFields = form.triggerConfig.formFields.filter((f) => !f.fieldName.trim());
       if (invalidFields.length > 0) {
@@ -699,7 +607,6 @@ export default function WorkflowEdit() {
       </div>
 
       <form onSubmit={handleSubmit} className="workflow-form">
-        {/* Basic Info */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Basic Information</h3>
@@ -751,7 +658,6 @@ export default function WorkflowEdit() {
           </div>
         </div>
 
-        {/* Google Form Fields Builder */}
         {(form.triggerType === 'GOOGLE_FORM' || form.triggerType === 'ECOMMERCE_ORDER') && (
           <div className="card">
             <div className="card-header">
@@ -854,7 +760,6 @@ export default function WorkflowEdit() {
           </div>
         )}
 
-        {/* Zoom Event Trigger — configuration is done in the CREATE_ZOOM_MEETING action */}
         {form.triggerType === 'ZOOM_EVENT' && (
           <div className="card">
             <div className="card-header">
@@ -871,7 +776,6 @@ export default function WorkflowEdit() {
           </div>
         )}
 
-        {/* Scheduled Post Trigger Configuration */}
         {form.triggerType === 'SCHEDULED_POST' && (
           <div className="card">
             <div className="card-header">
@@ -979,7 +883,6 @@ export default function WorkflowEdit() {
           </div>
         )}
 
-        {/* Actions */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Actions ({form.actions.length})</h3>

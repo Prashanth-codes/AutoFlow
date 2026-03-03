@@ -55,24 +55,20 @@ export const workflowAPI = {
   trigger: (id, payload = {}) => api.post(`/api/workflows/${id}/trigger`, payload),
 };
 
-// ─── Execution Logs ──────────────────────────────
 export const logsAPI = {
   getByWorkflow: (workflowId) => api.get(`/api/webhook/${workflowId}/logs`),
   getById: (logId) => api.get(`/api/webhook/logs/${logId}`),
 };
 
-// ─── Zoom Meetings ───────────────────────────────
 export const zoomAPI = {
   getMeetings: (workflowId) => api.get(`/api/zoom/meetings/${workflowId}`),
   getMeeting: (meetingDbId) => api.get(`/api/zoom/meeting/${meetingDbId}`),
 };
 
-// ─── Health ──────────────────────────────────────
 export const healthAPI = {
   check: () => api.get('/api/health'),
 };
 
-// ─── LinkedIn ────────────────────────────────────
 export const linkedinAPI = {
   getStatus: () => api.get('/api/linkedin/status'),
   disconnect: () => api.delete('/api/linkedin/disconnect'),
