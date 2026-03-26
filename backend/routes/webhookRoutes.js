@@ -5,7 +5,6 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 router.post('/:webhookId', webhookController.handleWebhook);
 
-// Protected routes
 router.get('/logs/:logId', authMiddleware, webhookController.getExecutionLog);
 router.get('/:workflowId/logs', authMiddleware, webhookController.getExecutionLogs);
 

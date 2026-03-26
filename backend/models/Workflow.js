@@ -47,10 +47,9 @@ const workflowSchema = new mongoose.Schema(
             default: 'text',
           },
           required: { type: Boolean, default: false },
-          options: [String], // for select type
+          options: [String],
         },
       ],
-      // Zoom trigger configuration
       zoomConfig: {
         meetingTopic: { type: String, default: '' },
         meetingDuration: { type: Number, default: 60 },
@@ -72,7 +71,6 @@ const workflowSchema = new mongoose.Schema(
         storeInDatabase: { type: Boolean, default: true },
         fetchTranscript: { type: Boolean, default: true },
       },
-      // Scheduled Post trigger configuration
       scheduledPostConfig: {
         platform: { type: String, enum: ['linkedin', 'twitter', 'facebook', 'instagram'], default: 'linkedin' },
         content: { type: String, default: '' },

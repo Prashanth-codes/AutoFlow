@@ -9,8 +9,6 @@ class Scheduler {
     this.timers = new Map();
   }
 
-  //Schedule a social media post using setTimeout (one-off execution).
-  //Accepts the full workflow object so organizationId can be read from it.
   async schedulePost(workflow, platform, content, scheduledFor, mediaUrl = null, userId = null) {
     try {
       const scheduledPost = await ScheduledPost.create({
@@ -21,7 +19,7 @@ class Scheduler {
         mediaUrls: mediaUrl ? [mediaUrl] : [],
         scheduledFor,
         status: 'scheduled',
-        userId: userId || workflow.createdBy, // store userId for LinkedIn OAuth lookup
+        userId: userId || workflow.createdBy, 
       });
 
       this._scheduleTimer(scheduledPost._id, scheduledFor);
@@ -84,7 +82,6 @@ class Scheduler {
       const executionResults = [];
       let hasError = false;
 
-      //Step 1: Execute the scheduled post to the platform
       try {
         switch (scheduledPost.platform) {
           case 'linkedin':
@@ -98,7 +95,6 @@ class Scheduler {
             console.log(`Posting to ${scheduledPost.platform}:`, scheduledPost.content);
         }
 
-        // Update scheduled post status
         scheduledPost.status = 'posted';
         scheduledPost.postedAt = new Date();
         await scheduledPost.save();
@@ -114,7 +110,7 @@ class Scheduler {
           executedAt: new Date(),
         });
 
-        console.log(`✅ Scheduled post executed: ${scheduledPostId}`);
+        console.log(`Scheduled post executed: ${scheduledPostId}`);
       } catch (postError) {
         hasError = true;
 
@@ -133,7 +129,6 @@ class Scheduler {
       }
       this.timers.delete(scheduledPostId.toString());
 
-      // Step 2: Execute chained workflow actions
       if (workflow && workflow.actions && workflow.actions.length > 0) {
         const actionPayload = {
           platform: scheduledPost.platform,
@@ -199,18 +194,16 @@ class Scheduler {
     }
   }
 
-  //Recover any pending scheduled posts from the database on server restart.
-  // Call this after the DB connection is established.
   async recoverScheduledPosts() {
     try {
       const pendingPosts = await ScheduledPost.find({ status: 'scheduled' });
-      console.log(`🔄 Recovering ${pendingPosts.length} scheduled post(s)...`);
+      console.log(`Recovering ${pendingPosts.length} scheduled post(s)...`);
 
       for (const post of pendingPosts) {
         this._scheduleTimer(post._id, post.scheduledFor);
       }
 
-      console.log('✅ Scheduled post recovery complete');
+      console.log('Scheduled post recovery complete');
     } catch (error) {
       console.error('Error recovering scheduled posts:', error);
     }

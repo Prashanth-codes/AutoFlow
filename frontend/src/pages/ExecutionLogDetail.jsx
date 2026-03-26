@@ -113,7 +113,6 @@ export default function ExecutionLogDetail() {
           </div>
         </div>
 
-        {/* Trigger Payload */}
         <div className="card">
           <div className="card-header clickable" onClick={() => setExpandedPayload(!expandedPayload)}>
             <div className="card-header-toggle">
@@ -132,7 +131,6 @@ export default function ExecutionLogDetail() {
         </div>
       </div>
 
-      {/* Action Results */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
           <h3 className="card-title">Action Results</h3>

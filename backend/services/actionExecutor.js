@@ -5,7 +5,6 @@ const Order = require('../models/Order');
 const ZoomMeeting = require('../models/ZoomMeeting');
 
 class ActionExecutor {
-  // Resolve {{fieldName}} placeholders in a string using payload values
   resolveTemplate(template, payload) {
     if (!template || typeof template !== 'string') return template;
     return template.replace(/\{\{(\w+)\}\}/g, (match, fieldName) => {
@@ -13,8 +12,6 @@ class ActionExecutor {
     });
   }
 
-  //Build a resolved config by applying fieldMappings from the action.
-  // fieldMappings is { configKey: 'payloadFieldName' } or { configKey: '{{field1}} - {{field2}}' }
 
   resolveFieldMappings(action, payload) {
     const { config = {}, fieldMappings = {} } = action;
@@ -22,11 +19,9 @@ class ActionExecutor {
 
     for (const [configKey, mapping] of Object.entries(fieldMappings)) {
       if (typeof mapping === 'string') {
-        // If the mapping contains {{ }}, resolve it as a template
         if (mapping.includes('{{')) {
           resolved[configKey] = this.resolveTemplate(mapping, payload);
         } else {
-          // Direct field reference
           resolved[configKey] = payload[mapping] !== undefined ? payload[mapping] : resolved[configKey];
         }
       }
@@ -38,7 +33,6 @@ class ActionExecutor {
   async executeAction(action, payload, workflow) {
     const { actionType } = action;
 
-    // Resolve field mappings to build dynamic config
     const config = this.resolveFieldMappings(action, payload);
     const resolvedAction = { ...action, config };
 
@@ -65,7 +59,6 @@ class ActionExecutor {
     const sendToUser = config.sendToUser !== undefined ? config.sendToUser : true;
     const recipients = [];
 
-    // Add user email - check recipientField first, then multiple payload fields
     if (sendToUser) {
       let userEmail = null;
       if (recipientField) {
@@ -96,12 +89,10 @@ class ActionExecutor {
       throw new Error('No recipients found for email');
     }
 
-    // Resolve custom subject with {{field}} placeholders
     const resolvedSubject = customSubject
       ? this.resolveTemplate(customSubject, payload)
       : 'Notification from Automation Platform';
 
-    // Use custom body if provided; otherwise auto-generate from payload fields
     let html;
     if (customBody) {
       html = this.resolveTemplate(customBody, payload);
@@ -126,7 +117,6 @@ class ActionExecutor {
 
   async executeStoreDB(config, payload, workflow) {
     try {
-      // Decide storage based on workflow trigger type
       if (workflow.triggerType === 'ECOMMERCE_ORDER') {
         return await this.storeEcommerceOrder(config, payload, workflow);
       }
@@ -146,7 +136,6 @@ class ActionExecutor {
 
   async storeEcommerceOrder(config, payload, workflow) {
     try {
-      // Extract order information from payload
       const orderId = payload.orderId || `ORD-${Date.now()}`;
       const customerName = payload.customerName || 'Unknown';
       const customerEmail = payload.customerEmail || payload.email || 'unknown@example.com';
@@ -156,7 +145,6 @@ class ActionExecutor {
       const paymentStatus = payload.paymentStatus || 'PENDING';
       const paymentMethod = payload.paymentMethod || 'UNKNOWN';
 
-      // Create order record
       const order = await Order.create({
         workflowId: workflow._id,
         organizationId: workflow.organizationId,
@@ -184,7 +172,6 @@ class ActionExecutor {
 
   async storeFormSubmission(config, payload, workflow) {
     try {
-      // Extract email and name from multiple possible field names
       const submitterEmail = payload.userEmail || payload.customerEmail || payload.submitterEmail || payload.email || 'unknown@example.com';
       const submitterName = payload.userName || payload.customerName || payload.submitterName || payload.name || 'Unknown';
 
@@ -209,7 +196,6 @@ class ActionExecutor {
 
   async storeZoomMeetingData(config, payload, workflow) {
     try {
-      // Check if a ZoomMeeting was already created by the CREATE_ZOOM_MEETING action
       const existingMeeting = await ZoomMeeting.findOne({ workflowId: workflow._id })
         .sort({ createdAt: -1 });
 
@@ -331,25 +317,25 @@ class ActionExecutor {
           }));
           const failedEmails = results.emailsSent.filter(e => e.status === 'rejected');
           if (failedEmails.length > 0) {
-            console.error(`❌ ${failedEmails.length} email(s) failed:`, failedEmails);
+            console.error(`${failedEmails.length} email(s) failed:`, failedEmails);
           } else {
-            console.log(`✅ All ${emailRecipients.length} Zoom invite email(s) sent successfully`);
+            console.log(`All ${emailRecipients.length} Zoom invite email(s) sent successfully`);
           }
         } catch (emailError) {
-          console.error('❌ Error sending Zoom invite emails:', emailError.message);
+          console.error('Error sending Zoom invite emails:', emailError.message);
           results.emailsSent = [{ error: emailError.message }];
         }
       } else {
-        console.warn('⚠️ Attendees exist but none have valid email addresses');
+        console.warn('Attendees exist but none have valid email addresses');
         results.emailsSent = [];
         results.emailWarning = 'Attendees configured but no valid email addresses found';
       }
     } else if (sendEmailInvite === false) {
-      console.log('ℹ️ Email invites disabled for this workflow');
+      console.log('ℹEmail invites disabled for this workflow');
       results.emailsSent = [];
       results.emailWarning = 'Email invites are disabled in config';
     } else {
-      console.warn('⚠️ No attendees configured — no Zoom invite emails will be sent');
+      console.warn('No attendees configured — no Zoom invite emails will be sent');
       results.emailsSent = [];
       results.emailWarning = 'No attendees configured. Add attendees in the workflow trigger config or CREATE_ZOOM_MEETING action to send invite emails.';
     }
@@ -473,7 +459,6 @@ class ActionExecutor {
       throw new Error('API Request: URL is required');
     }
 
-    // Resolve {{field}} placeholders in URL
     const resolvedUrl = this.resolveTemplate(url, payload);
 
     let parsedHeaders = {};
@@ -488,7 +473,6 @@ class ActionExecutor {
       }
     }
 
-    // Parse and resolve query params
     let parsedParams = {};
     if (rawQueryParams) {
       try {
@@ -501,7 +485,6 @@ class ActionExecutor {
       }
     }
 
-    // Parse and resolve body
     let parsedBody = undefined;
     if (rawBody && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
       try {
@@ -513,7 +496,6 @@ class ActionExecutor {
       }
     }
 
-    // Set default Content-Type for requests with body
     if (parsedBody && !parsedHeaders['Content-Type'] && !parsedHeaders['content-type']) {
       parsedHeaders['Content-Type'] = 'application/json';
     }
@@ -541,8 +523,6 @@ class ActionExecutor {
     }
   }
 
-  //Auto-generate a formatted email from all payload fields.
-  //Used when template is 'custom' but no customBody was provided.
   generateFieldsEmail(payload) {
     const rows = Object.entries(payload)
       .map(([key, val]) => {

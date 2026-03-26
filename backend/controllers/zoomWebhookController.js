@@ -3,8 +3,6 @@ const ZoomMeeting = require('../models/ZoomMeeting');
 const zoomService = require('../services/zoomService');
 const emailService = require('../utils/emailService');
 
- //Verify Zoom webhook request signature.
- //Zoom sends a `x-zm-signature` header using HMAC-SHA256 with the webhook secret token.
 function verifyZoomWebhook(req) {
   const secret = process.env.ZOOM_WEBHOOK_SECRET_TOKEN;
   if (!secret) {
@@ -32,7 +30,6 @@ exports.handleZoomWebhook = async (req, res) => {
   try {
     const { event, payload } = req.body;
 
-    // Zoom URL Validation
     if (event === 'endpoint.url_validation') {
       const plainToken = payload?.plainToken;
       const secret = process.env.ZOOM_WEBHOOK_SECRET_TOKEN || '';
@@ -47,39 +44,33 @@ exports.handleZoomWebhook = async (req, res) => {
       });
     }
 
-    //Signature verification for all other events
     if (!verifyZoomWebhook(req)) {
       console.warn('Zoom webhook signature verification failed');
       return res.status(401).json({ success: false, message: 'Invalid signature' });
     }
 
-    console.log(`📨 Zoom webhook event: ${event}`);
+    console.log(`Zoom webhook event: ${event}`);
 
-    // meeting ended
     if (event === 'meeting.ended') {
       await handleMeetingEnded(payload);
       return res.status(200).json({ success: true, message: 'Meeting ended event processed' });
     }
 
-    // meeting started
     if (event === 'meeting.started') {
       await handleMeetingStarted(payload);
       return res.status(200).json({ success: true, message: 'Meeting started event processed' });
     }
 
-    //recording completed
     if (event === 'recording.completed') {
       await handleRecordingCompleted(payload);
       return res.status(200).json({ success: true, message: 'Recording completed event processed' });
     }
 
-    //recording transcript completed
     if (event === 'recording.transcript_completed') {
       await handleTranscriptCompleted(payload);
       return res.status(200).json({ success: true, message: 'Transcript completed event processed' });
     }
 
-    //other events
     return res.status(200).json({ success: true, message: `Event ${event} received` });
   } catch (error) {
     console.error('Zoom webhook error:', error);
@@ -87,7 +78,6 @@ exports.handleZoomWebhook = async (req, res) => {
   }
 };
 
- //Handle meeting.started — update status to 'started'.
 async function handleMeetingStarted(payload) {
   const meetingId = String(payload?.object?.id || '');
   if (!meetingId) return;
@@ -104,11 +94,9 @@ async function handleMeetingStarted(payload) {
     startedEvent: payload,
   };
   await meeting.save();
-  console.log(`✅ Zoom meeting ${meetingId} marked as started`);
+  console.log(` Zoom meeting ${meetingId} marked as started`);
 }
 
- //Handle meeting ended, update status, store duration/participant count,
- //and try to fetch transcript if auto_recording was enabled.
 
 async function handleMeetingEnded(payload) {
   const meetingId = String(payload?.object?.id || '');
@@ -130,9 +118,8 @@ async function handleMeetingEnded(payload) {
   };
 
   await meeting.save();
-  console.log(`✅ Zoom meeting ${meetingId} marked as ended (duration: ${meeting.actualDuration}min, participants: ${meeting.participantCount})`);
+  console.log(`Zoom meeting ${meetingId} marked as ended (duration: ${meeting.actualDuration}min, participants: ${meeting.participantCount})`);
 
-  // Attempt to fetch transcript.
   setTimeout(async () => {
     try {
       await fetchAndStoreTranscript(meetingId);
@@ -152,7 +139,6 @@ async function handleRecordingCompleted(payload) {
     return;
   }
 
-  // Extract recording files from the webhook payload
   const recordingFiles = payload?.object?.recording_files || [];
   const videoFile = recordingFiles.find(
     (f) => f.file_type === 'MP4' || f.recording_type === 'shared_screen_with_speaker_view'
@@ -173,7 +159,7 @@ async function handleRecordingCompleted(payload) {
   };
 
   await meeting.save();
-  console.log(`✅ Recording stored for meeting ${meetingId}`);
+  console.log(`Recording stored for meeting ${meetingId}`);
   await fetchAndStoreTranscript(meetingId);
   await sendMeetingSummaryEmail(meeting);
 }

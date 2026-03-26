@@ -7,13 +7,11 @@ class WorkflowEngine {
       const startTime = Date.now();
       const executionLog = await ExecutionLog.findById(executionLogId);
 
-      // Sort actions by order (spread to avoid mutating the original document array)
       const sortedActions = [...workflow.actions].sort((a, b) => a.order - b.order);
 
       const executionResults = [];
       let hasError = false;
 
-      // Execute each action in sequence
       for (const action of sortedActions) {
         try {
           const result = await actionExecutor.executeAction(action, payload, workflow);

@@ -2,7 +2,6 @@ const axios = require('axios');
 const https = require('https');
 const LinkedInAccount = require('../models/LinkedInAccount');
 
-// Force IPv4 to avoid ETIMEDOUT when Node tries IPv6 first
 const httpsAgent = new https.Agent({ family: 4 });
 
 class LinkedInService {
@@ -10,17 +9,8 @@ class LinkedInService {
     this.apiUrl = 'https://api.linkedin.com/v2';
   }
 
-  /**
-   * Post text content to LinkedIn on behalf of a user.
-   * @param {string} content - The text to post
-   * @param {string|null} mediaUrl - (unused for now, placeholder)
-   * @param {string|null} appUserId - The app user whose LinkedIn token to use.
-   *        When called from a workflow the userId should be supplied.
-   *        Falls back to the first stored account for backwards compat.
-   */
   async postToLinkedIn(content, mediaUrl = null, appUserId = null) {
     try {
-      // Look up the stored OAuth token
       const query = appUserId ? { appUserId } : {};
       const account = await LinkedInAccount.findOne(query).sort({ updatedAt: -1 });
 
@@ -52,7 +42,7 @@ class LinkedInService {
         timeout: 15000,
       });
 
-      console.log('✅ LinkedIn post created:', response.data.id);
+      console.log('LinkedIn post created:', response.data.id);
 
       return {
         success: true,

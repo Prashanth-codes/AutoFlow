@@ -68,7 +68,6 @@ const zoomMeetingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
-    // Transcript data populated when the meeting ends
     transcript: {
       type: String,
       default: '',
@@ -85,7 +84,7 @@ const zoomMeetingSchema = new mongoose.Schema(
       type: Date,
     },
     actualDuration: {
-      type: Number, // in minutes
+      type: Number, 
     },
     participantCount: {
       type: Number,

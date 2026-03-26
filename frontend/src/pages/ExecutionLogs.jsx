@@ -30,7 +30,6 @@ export default function ExecutionLogs() {
       const wfs = data.workflows || [];
       setWorkflows(wfs);
 
-      // Load all logs from all workflows
       const allLogs = [];
       for (const wf of wfs) {
         try {

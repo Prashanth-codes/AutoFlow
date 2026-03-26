@@ -23,7 +23,6 @@ const linkedInAccountSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// One LinkedIn account per app user
 linkedInAccountSchema.index({ appUserId: 1 }, { unique: true });
 
 module.exports = mongoose.model('LinkedInAccount', linkedInAccountSchema);

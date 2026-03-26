@@ -635,7 +635,6 @@ export default function WorkflowEdit() {
           </div>
         </div>
 
-        {/* Trigger */}
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">Trigger</h3>

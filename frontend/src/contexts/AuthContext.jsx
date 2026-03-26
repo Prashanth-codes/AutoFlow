@@ -1,15 +1,9 @@
 
-// createContext → Creates a global state container
-//useContext → Used to access that global state
-//useState → Stores state
-//useEffect → Runs side effects (e.g. API calls) on component mount or when dependencies change
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
-//Wraps your entire app
-//Provides authentication data to all child components
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);

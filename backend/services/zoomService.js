@@ -10,8 +10,6 @@ class ZoomService {
     this._tokenExpiry = null;
   }
 
-  //Get an OAuth access token using Server-to-Server OAuth (Account Credentials).
-  // Caches the token until it expires.
 
   async getAccessToken() {
     if (this._accessToken && this._tokenExpiry && Date.now() < this._tokenExpiry) {
@@ -43,18 +41,6 @@ class ZoomService {
     }
   }
 
-  /**
-   * Create a Zoom meeting via the Zoom REST API.
-   * @param {Object} options
-   * @param {string} options.topic - Meeting topic
-   * @param {number} options.duration - Duration in minutes
-   * @param {string} options.agenda - Meeting agenda
-   * @param {string} options.startTime - ISO date string
-   * @param {string} options.timezone - Timezone string
-   * @param {string} options.password - Meeting password
-   * @param {Array}  options.attendees - [{ name, email }]
-   * @param {boolean} options.autoRecording - 'cloud' | 'local' | 'none'
-   */
   async createMeeting({
     topic = 'Meeting',
     duration = 60,
@@ -220,7 +206,6 @@ class ZoomService {
     return textLines.join(' ').trim();
   }
 
-  // Mock implementation for development / when credentials aren't configured
   _mockCreateMeeting({ topic, duration, agenda, startTime, attendees }) {
     const mockId = `zoom_${Date.now()}`;
     console.log('🎥 [MOCK] Creating Zoom meeting:', { topic, duration, agenda, attendees: attendees?.length || 0 });

@@ -6,7 +6,6 @@ const authMiddleware = require('../middlewares/authMiddleware');
 router.get('/auth/linkedin', linkedinController.startOAuth);
 router.get('/auth/linkedin/callback', linkedinController.handleCallback);
 
-//Protected endpoints
 router.get('/linkedin/status', authMiddleware, linkedinController.getStatus);
 router.post('/linkedin/test-post', authMiddleware, linkedinController.testPost);
 router.delete('/linkedin/disconnect', authMiddleware, linkedinController.disconnect);

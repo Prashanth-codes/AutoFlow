@@ -3,16 +3,13 @@ const Organization = require('../models/Organization');
 const generateWebhookId = require('../utils/generateWebhookId');
 const scheduler = require('../services/scheduler');
 
-// Create Workflow
 exports.createWorkflow = async (req, res) => {
   try {
     const { name, description, triggerType, triggerConfig, actions } = req.body;
     const { organizationId } = req.user;
     const { userId } = req.user;
-    //org id, userid comes from the jwt.
 
 
-    // Validate trigger type
     const validTriggers = [
       'GOOGLE_FORM',
       'ZOOM_EVENT',
@@ -26,7 +23,6 @@ exports.createWorkflow = async (req, res) => {
       });
     }
 
-    // Validate actions
     if (!actions || !Array.isArray(actions) || actions.length === 0) {
       return res.status(400).json({
         success: false,
@@ -34,11 +30,8 @@ exports.createWorkflow = async (req, res) => {
       });
     }
 
-    // Generate webhook ID
     const webhookId = generateWebhookId();
 
-    // Create workflow
-    // Ensuring every action has fieldMappings, auto-assiging execution order.
     const workflow = await Workflow.create({
       name,
       description,
@@ -54,7 +47,6 @@ exports.createWorkflow = async (req, res) => {
       })),
     });
 
-    // Update organization workflow count
     await Organization.findByIdAndUpdate(organizationId, {
       $inc: { workflowCount: 1 },
     });
@@ -74,7 +66,6 @@ exports.createWorkflow = async (req, res) => {
   }
 };
 
-// Get All Workflows
 exports.getWorkflows = async (req, res) => {
   try {
     const { organizationId } = req.user;
@@ -98,7 +89,6 @@ exports.getWorkflows = async (req, res) => {
   }
 };
 
-// Get Single Workflow
 exports.getWorkflow = async (req, res) => {
   try {
     const { id } = req.params;
@@ -130,14 +120,12 @@ exports.getWorkflow = async (req, res) => {
   }
 };
 
-// Update Workflow
 exports.updateWorkflow = async (req, res) => {
   try {
     const { id } = req.params;
     const { organizationId } = req.user;
     const { name, description, actions, isActive, triggerType, triggerConfig } = req.body;
 
-    // Build update object with only provided fields to avoid wiping unset ones
     const updateFields = {};
     if (name !== undefined) updateFields.name = name;
     if (description !== undefined) updateFields.description = description;
@@ -194,7 +182,6 @@ exports.updateWorkflow = async (req, res) => {
   }
 };
 
-// Delete Workflow
 exports.deleteWorkflow = async (req, res) => {
   try {
     const { id } = req.params;
@@ -212,7 +199,6 @@ exports.deleteWorkflow = async (req, res) => {
       });
     }
 
-    // Update organization workflow count
     await Organization.findByIdAndUpdate(organizationId, {
       $inc: { workflowCount: -1 },
     });
@@ -231,7 +217,6 @@ exports.deleteWorkflow = async (req, res) => {
   }
 };
 
-// Get webhook URL for a workflow
 exports.getWebhookUrl = async (req, res) => {
   try {
     const { id } = req.params;
@@ -266,7 +251,6 @@ exports.getWebhookUrl = async (req, res) => {
   }
 };
 
-// Schedule a SCHEDULED_POST workflow
 exports.scheduleWorkflowPost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -287,14 +271,13 @@ exports.scheduleWorkflowPost = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing scheduled post configuration (content, scheduledFor)' });
     }
 
-    // Create scheduled post via the scheduler
     const result = await scheduler.schedulePost(
       workflow,
       config.platform || 'linkedin',
       config.content,
       new Date(config.scheduledFor),
-      null, // mediaUrl
-      userId // pass the userId so LinkedIn service can look up the right account
+      null, 
+      userId
     );
 
     workflow.executionCount += 1;
@@ -315,7 +298,6 @@ exports.scheduleWorkflowPost = async (req, res) => {
   }
 };
 
-// Trigger a workflow manually
 exports.triggerWorkflow = async (req, res) => {
   try {
     const { id } = req.params;
@@ -333,13 +315,11 @@ exports.triggerWorkflow = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Workflow is inactive. Please activate it first.' });
     }
 
-    // Build payload from request body or use defaults
     let payload = req.body || {};
     if (typeof payload === 'object' && Object.keys(payload).length === 0) {
       payload = { _trigger: workflow.triggerType, _triggeredAt: new Date().toISOString() };
     }
 
-    // Create execution log entry
     const executionLog = await ExecutionLog.create({
       workflowId: workflow._id,
       organizationId: workflow.organizationId,
@@ -347,12 +327,10 @@ exports.triggerWorkflow = async (req, res) => {
       status: 'pending',
     });
 
-    // Execute workflow asynchronously
     workflowEngine.executeWorkflow(workflow, payload, executionLog._id).catch((error) => {
       console.error('Manual trigger execution error:', error);
     });
 
-    // Increment execution count
     await Workflow.findByIdAndUpdate(workflow._id, {
       $inc: { executionCount: 1 },
     });

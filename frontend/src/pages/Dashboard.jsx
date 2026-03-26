@@ -54,7 +54,6 @@ export default function Dashboard() {
             );
           }
         } catch {
-          // skip
         }
       }
       allLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -97,7 +96,6 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Stats Cards */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-card-icon stat-icon-blue">

@@ -2,13 +2,11 @@ const Workflow = require('../models/Workflow');
 const ExecutionLog = require('../models/ExecutionLog');
 const workflowEngine = require('../services/workflowEngine');
 
-// Receive webhook and trigger workflow
 exports.handleWebhook = async (req, res) => {
   try {
     const { webhookId } = req.params;
     let payload = req.body;
 
-    // Find workflow by webhook ID
     const workflow = await Workflow.findOne({ webhookId });
 
     if (!workflow) {
@@ -25,29 +23,22 @@ exports.handleWebhook = async (req, res) => {
       });
     }
 
-    // Flatten Google Form responses array into a simple key-value object
-    // Google Forms sends: { responses: [{ question: "Name", answer: "John" }, ...] }
-    // We normalize to: { name: "John", email: "john@example.com", ... }
     if ((workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') && Array.isArray(payload.responses)) {
       const flattened = {};
       for (const item of payload.responses) {
         if (item.question && item.answer !== undefined) {
-          // all should in lowercase and spaces replaced with underscores.
           const key = item.question.trim().toLowerCase().replace(/\s+/g, '_');
           flattened[key] = item.answer;
         }
       }
-      // Keep original responses as _rawResponses for reference
       flattened._rawResponses = payload.responses;
       payload = flattened;
     }
 
-    // Ensure payload is always a valid object
     if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
       payload = { _trigger: workflow.triggerType, _triggeredAt: new Date().toISOString() };
     }
 
-    // Validate form fields for triggers with form fields
     if (
       (workflow.triggerType === 'GOOGLE_FORM' || workflow.triggerType === 'ECOMMERCE_ORDER') &&
       workflow.triggerConfig?.formFields?.length > 0
@@ -64,7 +55,6 @@ exports.handleWebhook = async (req, res) => {
       }
     }
 
-    // Create execution log entry
     const executionLog = await ExecutionLog.create({
       workflowId: workflow._id,
       organizationId: workflow.organizationId,
@@ -72,12 +62,10 @@ exports.handleWebhook = async (req, res) => {
       status: 'pending',
     });
 
-    // Execute workflow asynchronously
     workflowEngine.executeWorkflow(workflow, payload, executionLog._id).catch((error) => {
       console.error('Workflow execution error:', error);
     });
 
-    // Increment execution count
     await Workflow.findByIdAndUpdate(workflow._id, {
       $inc: { executionCount: 1 },
     });
@@ -97,13 +85,11 @@ exports.handleWebhook = async (req, res) => {
   }
 };
 
-// Get execution logs
 exports.getExecutionLogs = async (req, res) => {
   try {
     const { workflowId } = req.params;
     const { organizationId } = req.user;
 
-    // Verify workflow belongs to organization
     const workflow = await Workflow.findOne({
       _id: workflowId,
       organizationId,
@@ -136,7 +122,6 @@ exports.getExecutionLogs = async (req, res) => {
   }
 };
 
-// Get single execution log
 exports.getExecutionLog = async (req, res) => {
   try {
     const { logId } = req.params;

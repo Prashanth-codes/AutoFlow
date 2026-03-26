@@ -12,14 +12,13 @@ const scheduler = require('./services/scheduler');
 
 const app = express();
 
-// Connect Db return a promise, after db connected, recover scheduled posts.
 connectDB().then(() => {
   scheduler.recoverScheduledPosts();
 });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // parse form-data requests
+app.use(express.urlencoded({ extended: true })); 
 
 app.use('/api/auth', authRoutes);
 app.use('/api/workflows', workflowRoutes);
@@ -35,7 +34,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -44,7 +42,6 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
@@ -53,7 +50,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

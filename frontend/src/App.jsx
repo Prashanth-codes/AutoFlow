@@ -27,7 +27,6 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public Routes */}
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
@@ -36,8 +35,6 @@ function AppRoutes() {
         path="/register"
         element={isAuthenticated ? <Navigate to="/" replace /> : <Register />}
       />
-
-      {/* Protected Routes */}
       <Route
         element={
           <ProtectedRoute>
@@ -55,7 +52,6 @@ function AppRoutes() {
         <Route path="/settings" element={<Settings />} />
       </Route>
 
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -4,28 +4,20 @@ const Organization = require('../models/Organization');
 const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
-  // Without transaction, org may be created but user creation fails, you get broken data. 
-  // With transaction, if any step fails, everything rolls back and you get clean data.
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { name, email, password, organizationName } = req.body;
-
-    // Check if user exists, because no user with 2 orgs not allowed.
     let user = await User.findOne({ email });
     if (user) {
-      await session.abortTransaction(); //cancel transaction if user already exists
-      session.endSession(); // close session
+      await session.abortTransaction(); 
+      session.endSession(); 
       return res.status(400).json({
         success: false,
         message: 'User already exists',
       });
     }
-
-    // Create organization (within transaction)
-    // Inside transaction, you must pass an array to create, owner is null, because user not yet created.
-    // every registration = new organisation.
     const [organization] = await Organization.create(
       [
         {
@@ -37,8 +29,6 @@ exports.register = async (req, res) => {
       { session }
     );
 
-    // Create user (within transaction)
-    // first registered user becomes-> role = admin, and organization owner. Subsequent users invited by admin will be role = member.
     [user] = await User.create(
       [
         {
@@ -52,8 +42,6 @@ exports.register = async (req, res) => {
       { session }
     );
 
-    // Update organization owner
-
     organization.owner = user._id;
     organization.members.push(user._id);
     await organization.save({ session });
@@ -61,7 +49,6 @@ exports.register = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // Generate token so user is logged in immediately after registration
     const token = jwt.sign(
       {
         userId: user._id,
@@ -99,12 +86,10 @@ exports.register = async (req, res) => {
   }
 };
 
-// Login User
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate email and password
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -112,7 +97,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check user
     const user = await User.findOne({ email }).select('+password').populate('organizationId');
     if (!user) {
       return res.status(401).json({
@@ -121,7 +105,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check password
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({
@@ -130,7 +113,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate token
     const token = jwt.sign(
       {
         userId: user._id,
@@ -166,7 +148,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// Get User Profile
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).populate('organizationId');

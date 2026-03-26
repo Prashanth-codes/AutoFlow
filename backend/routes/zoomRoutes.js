@@ -5,7 +5,6 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 router.post('/webhook', zoomWebhookController.handleZoomWebhook);
 
-// Protected: Zoom meeting data endpoints
 router.get('/meetings/:workflowId', authMiddleware, zoomWebhookController.getZoomMeetings);
 router.get('/meeting/:meetingDbId', authMiddleware, zoomWebhookController.getZoomMeeting);
 

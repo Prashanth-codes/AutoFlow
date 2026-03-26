@@ -68,7 +68,6 @@ function ActionConfigFields({ action, onChange, formFields }) {
 
   const hasFormFields = formFields && formFields.length > 0;
 
-  // Helper to get email-type fields
   const emailFields = hasFormFields
     ? formFields.filter((f) => f.fieldType === 'email' || f.fieldName.toLowerCase().includes('email'))
     : [];
@@ -283,7 +282,6 @@ function ActionConfigFields({ action, onChange, formFields }) {
             />
           </div>
 
-          {/* Attendees */}
           <div className="form-group">
             <label>Attendees (will receive email invite with meeting URL)</label>
             {attendees.length > 0 && (
@@ -837,10 +835,10 @@ export default function WorkflowCreate() {
                     }))
                   }
                 >
-                  <option value="linkedin">🔗 LinkedIn</option>
-                  <option value="twitter" disabled>🐦 Twitter (coming soon)</option>
-                  <option value="facebook" disabled>📘 Facebook (coming soon)</option>
-                  <option value="instagram" disabled>📷 Instagram (coming soon)</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="twitter" disabled>Twitter (coming soon)</option>
+                  <option value="facebook" disabled>Facebook (coming soon)</option>
+                  <option value="instagram" disabled>Instagram (coming soon)</option>
                 </select>
               </div>
 

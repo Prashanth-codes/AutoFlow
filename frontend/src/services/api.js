@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor — attach JWT token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,7 +20,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -36,14 +34,12 @@ api.interceptors.response.use(
   }
 );
 
-// ─── Auth ────────────────────────────────────────
 export const authAPI = {
   register: (data) => api.post('/api/auth/register', data),
   login: (data) => api.post('/api/auth/login', data),
   getProfile: () => api.get('/api/auth/profile'),
 };
 
-// ─── Workflows ───────────────────────────────────
 export const workflowAPI = {
   getAll: () => api.get('/api/workflows'),
   getById: (id) => api.get(`/api/workflows/${id}`),
